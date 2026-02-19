@@ -6,6 +6,7 @@ import { StatusBadge } from '@/components/ui/badge';
 import { formatDateTime } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useI18n } from '@/lib/i18n/i18n-context';
+import { RiskOverviewPanel } from './RiskOverviewPanel';
 
 interface ConsultationItem {
   id: string;
@@ -199,6 +200,9 @@ export function DashboardContent({
           )}
         </CardContent>
       </Card>
+
+      {/* Risk Overview Panel (P0) */}
+      <RiskOverviewPanel />
 
       {/* Patients at Risk */}
       {atRiskItems.length > 0 && (

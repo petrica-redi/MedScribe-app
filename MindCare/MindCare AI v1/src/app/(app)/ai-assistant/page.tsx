@@ -16,7 +16,8 @@ export default function AIAssistantPage() {
   const supabase = useMemo(() => createClient(), []);
   const { t } = useI18n();
   const [query, setQuery] = useState("");
-  const [scope, setScope] = useState<"general" | "patient" | "icd">("general");
+  const [scope, setScope] = useState<"general" | "patient" | "icd" | "case">("general");
+  const [caseDescription, setCaseDescription] = useState("");
   const [selectedPatientId, setSelectedPatientId] = useState("");
   const [selectedPatientName, setSelectedPatientName] = useState("");
   const [icdCode, setIcdCode] = useState("");
@@ -72,6 +73,8 @@ export default function AIAssistantPage() {
           (notes || []).map((n: any) =>
             `Note (${n.status}): ${((n.sections as { title: string; content: string }[]) || []).map((s: any) => `${s.title}: ${s.content.substring(0, 200)}`).join("; ")}`
           ).join("\n");
+      } else if (scope === "case" && caseDescription) {
+        contextInfo = `\n\nCASE ANALYSIS MODE — The clinician is presenting a complex case for analysis. Provide:\n1. Differential diagnoses (ranked by probability)\n2. Recommended treatment approaches\n3. Risk assessment\n4. Suggested investigations/assessments\n5. ICD-10 codes for each differential\n\nCase Description:\n${caseDescription}`;
       } else if (scope === "icd" && icdCode) {
         contextInfo = `\n\nFocus on ICD-10 code: ${icdCode}. Provide clinical information about this diagnosis code, including typical presentation, workup, management, and coding guidelines.`;
       }
@@ -132,6 +135,7 @@ export default function AIAssistantPage() {
               { key: "general" as const, label: t('ai.generalQuery'), desc: t('ai.generalDesc') },
               { key: "patient" as const, label: t('ai.patientSpecific'), desc: t('ai.patientDesc') },
               { key: "icd" as const, label: t('ai.icdLookup'), desc: t('ai.icdDesc') },
+              { key: "case" as const, label: '🧩 Case Analysis', desc: 'Describe a complex case for differential diagnosis & treatment planning' },
             ].map((s) => (
               <button
                 key={s.key}
@@ -173,6 +177,32 @@ export default function AIAssistantPage() {
               {selectedPatientId && (
                 <p className="text-xs text-green-600 font-medium">Selected: {selectedPatientName}</p>
               )}
+            </div>
+          )}
+
+          {/* Case Analysis Input */}
+          {scope === "case" && (
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-medical-text">Describe the Clinical Case</label>
+              <textarea
+                value={caseDescription}
+                onChange={(e) => setCaseDescription(e.target.value)}
+                placeholder={"Example: 35-year-old female presents with 3-month history of progressive mood instability, alternating between periods of high energy with decreased sleep need (3-4 days) and depressive episodes with anhedonia lasting 1-2 weeks. History of one prior psychiatric hospitalization at age 28. Current medications: Sertraline 150mg. Reports recent onset of hearing her name being called when alone..."}
+                className="w-full rounded-lg border border-medical-border px-4 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 min-h-[120px]"
+                rows={5}
+              />
+              <div className="flex flex-wrap gap-2">
+                {[
+                  'Include differential diagnoses',
+                  'Suggest treatment approaches',
+                  'Risk assessment',
+                  'Recommended investigations',
+                ].map((tag) => (
+                  <span key={tag} className="inline-flex items-center rounded-full bg-indigo-50 border border-indigo-200 px-2.5 py-1 text-xs text-indigo-700">
+                    ✓ {tag}
+                  </span>
+                ))}
+              </div>
             </div>
           )}
 

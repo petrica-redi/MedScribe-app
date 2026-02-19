@@ -34,6 +34,9 @@ import type {
   NoteSection,
   BillingCode,
 } from "@/types";
+import { SymptomSidePanel } from "@/components/consultation/SymptomSidePanel";
+import { MSEPanel } from "@/components/consultation/MSEPanel";
+import { ReferralLetterModal } from "@/components/consultation/ReferralLetterModal";
 
 interface PageState {
   note: ClinicalNote | null;
@@ -60,6 +63,10 @@ export default function NoteEditorPage() {
   const [sections, setSections] = useState<NoteSection[]>([]);
   const [status, setStatus] = useState<NoteStatus>("draft");
   const [billingCodes, setBillingCodes] = useState<BillingCode[]>([]);
+
+  const [symptomPanelOpen, setSymptomPanelOpen] = useState(false);
+  const [showMSE, setShowMSE] = useState(false);
+  const [showReferral, setShowReferral] = useState(false);
 
   // Track content changes for debounced save
   const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -568,6 +575,33 @@ export default function NoteEditorPage() {
           <Button
             variant="outline"
             size="sm"
+            onClick={() => setShowMSE(!showMSE)}
+            title="Auto-generate Mental Status Exam"
+          >
+            🧠 MSE
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowReferral(true)}
+            title="Generate referral letter"
+          >
+            📄 Referral
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setSymptomPanelOpen(!symptomPanelOpen)}
+            title="Detected symptoms panel"
+          >
+            🔍 Symptoms
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => {
               const url = window.location.href;
               navigator.clipboard.writeText(url);
@@ -726,6 +760,20 @@ export default function NoteEditorPage() {
                   </p>
                 </CardContent>
               </Card>
+            )}
+
+            {/* MSE Section */}
+            {showMSE && (
+              <MSEPanel
+                onApply={(mse) => {
+                  // Add MSE as a new section to the note
+                  const mseContent = Object.entries(mse)
+                    .map(([key, value]) => `**${key.replace(/([A-Z])/g, ' $1').trim()}:** ${value}`)
+                    .join('\n\n');
+                  const newSection = { title: 'Mental Status Examination', content: mseContent, order: sections.length };
+                  setSections(prev => [...prev, newSection]);
+                }}
+              />
             )}
 
             {/* Billing Codes Section */}
@@ -922,7 +970,20 @@ export default function NoteEditorPage() {
             </Card>
           </div>
         </div>
+
+        {/* Symptom Side Panel */}
+        <SymptomSidePanel
+          isOpen={symptomPanelOpen}
+          onToggle={() => setSymptomPanelOpen(!symptomPanelOpen)}
+        />
       </div>
+
+      {/* Referral Letter Modal */}
+      <ReferralLetterModal
+        isOpen={showReferral}
+        onClose={() => setShowReferral(false)}
+        noteSections={sections}
+      />
     </div>
   );
 }

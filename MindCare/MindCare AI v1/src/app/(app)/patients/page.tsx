@@ -11,6 +11,8 @@ import { formatDateTime } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n/i18n-context";
 import type { Patient } from "@/types";
 import Link from "next/link";
+import { PatientProgressCharts } from "@/components/dashboard/PatientProgressCharts";
+import { RiskOverviewPanel } from "@/components/dashboard/RiskOverviewPanel";
 
 interface PatientConsultation {
   id: string;
@@ -29,7 +31,7 @@ interface PatientNote {
   created_at: string;
 }
 
-type PatientTab = "file" | "pending" | "consultations";
+type PatientTab = "file" | "pending" | "consultations" | "progress";
 
 // Demo risk flags for patients
 interface RiskFlag {
@@ -294,6 +296,9 @@ export default function PatientsPage() {
         </Card>
       )}
 
+      {/* Risk Overview Panel (P0) */}
+      <RiskOverviewPanel />
+
       {/* Search */}
       <div className="relative">
         <input
@@ -394,6 +399,7 @@ export default function PatientsPage() {
                               { key: "file" as const, label: t('patients.patientFile') },
                               { key: "consultations" as const, label: t('patients.consultations') },
                               { key: "pending" as const, label: `${t('patients.pendingActions')}${pendingActions.length > 0 ? ` (${pendingActions.length})` : ""}` },
+                              { key: "progress" as const, label: "📈 Progress" },
                             ]).map((tab) => (
                               <button
                                 key={tab.key}
@@ -508,6 +514,11 @@ export default function PatientsPage() {
                           )}
 
                           {/* Pending Actions Tab */}
+                          {/* Progress Tab */}
+                          {patientTab === "progress" && (
+                            <PatientProgressCharts />
+                          )}
+
                           {patientTab === "pending" && (
                             <div className="space-y-2">
                               {pendingActions.length === 0 ? (
