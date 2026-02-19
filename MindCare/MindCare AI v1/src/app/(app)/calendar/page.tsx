@@ -66,12 +66,22 @@ export default function CalendarPage() {
         .lte("created_at", end.toISOString())
         .order("created_at", { ascending: true });
 
-      setConsultations(
-        (data || []).map((c: any) => ({
-          ...c,
-          patientName: (c.metadata as Record<string, unknown>)?.patient_name as string || "Unnamed Patient",
-        }))
-      );
+      const dbConsultations = (data || []).map((c: any) => ({
+        ...c,
+        patientName: (c.metadata as Record<string, unknown>)?.patient_name as string || "Unnamed Patient",
+      }));
+
+      // Demo mental health appointments
+      const today = new Date();
+      const demoAppts: CalendarConsultation[] = [
+        { id: 'demo-1', visit_type: 'Psychiatric Evaluation', status: 'scheduled', created_at: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 9, 0).toISOString(), metadata: {}, patientName: 'Maria Popescu' },
+        { id: 'demo-2', visit_type: 'CBT Session', status: 'scheduled', created_at: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 10, 30).toISOString(), metadata: {}, patientName: 'Ion Ionescu' },
+        { id: 'demo-3', visit_type: 'Medication Management', status: 'scheduled', created_at: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 14, 0).toISOString(), metadata: {}, patientName: 'Ana Dumitrescu' },
+        { id: 'demo-4', visit_type: 'Crisis Follow-up', status: 'scheduled', created_at: new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1, 9, 0).toISOString(), metadata: {}, patientName: 'Elena Vasile' },
+        { id: 'demo-5', visit_type: 'Group Therapy', status: 'scheduled', created_at: new Date(today.getFullYear(), today.getMonth(), today.getDate() + 2, 15, 0).toISOString(), metadata: {}, patientName: 'Andrei Popa' },
+      ].filter((d) => new Date(d.created_at) >= start && new Date(d.created_at) <= end);
+
+      setConsultations([...dbConsultations, ...demoAppts]);
     } catch {
       // silently fail
     } finally {
@@ -130,12 +140,12 @@ export default function CalendarPage() {
     <div className="flex flex-col gap-6 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-medical-text">Calendar</h1>
-          <p className="text-sm text-medical-muted mt-1">Consultation schedule overview</p>
+          <h1 className="text-2xl font-semibold text-medical-text">{t('calendar.title')}</h1>
+          <p className="text-sm text-medical-muted mt-1">{t('calendar.subtitle')}</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => setCurrentDate(new Date())}>Today</Button>
-          <Link href="/consultation/new"><Button size="sm">New Consultation</Button></Link>
+          <Button variant="outline" size="sm" onClick={() => setCurrentDate(new Date())}>{t('calendar.today')}</Button>
+          <Link href="/consultation/new"><Button size="sm">{t('calendar.newConsultation')}</Button></Link>
         </div>
       </div>
 
@@ -158,7 +168,7 @@ export default function CalendarPage() {
       </div>
 
       {loading ? (
-        <div className="py-12 text-center text-medical-muted">Loading schedule...</div>
+        <div className="py-12 text-center text-medical-muted">{t('calendar.loading')}</div>
       ) : viewMode === "month" ? (
         /* Month View */
         <Card>

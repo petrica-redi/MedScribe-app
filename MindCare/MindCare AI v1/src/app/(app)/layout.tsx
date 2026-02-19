@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { Providers } from '@/components/providers';
 import { ToastProvider } from '@/components/ui/toast';
 import { AppShell } from '@/components/layout/app-shell';
+import { ErrorBoundary } from '@/components/error-boundary';
 
 export const metadata = {
   title: 'MindCare AI',
@@ -25,7 +26,9 @@ export default async function AppLayout({
     <Providers>
       <ToastProvider>
         <AppShell userEmail={userEmail}>
-          {children}
+          <ErrorBoundary>
+            {children}
+          </ErrorBoundary>
         </AppShell>
       </ToastProvider>
     </Providers>

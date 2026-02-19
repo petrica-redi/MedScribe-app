@@ -225,8 +225,8 @@ export default function AnalyticsPage() {
     <div className="flex flex-col gap-6 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-medical-text">Analytics & Reports</h1>
-          <p className="text-sm text-medical-muted mt-1">Consultation analytics, trends, and report generation</p>
+          <h1 className="text-2xl font-semibold text-medical-text">{t('analytics.title')}</h1>
+          <p className="text-sm text-medical-muted mt-1">{t('analytics.subtitle')}</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => setShowFilters(!showFilters)}>
