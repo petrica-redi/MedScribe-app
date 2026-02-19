@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { generateNoteSchema } from "@/lib/validators";
 import { rateLimit } from "@/lib/utils/rate-limit";
+import { logAudit } from "@/lib/audit";
 import type { NoteSection, BillingCode } from "@/types";
 import { NextRequest, NextResponse } from "next/server";
 

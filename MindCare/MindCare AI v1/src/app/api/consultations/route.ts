@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getUser } from "@/lib/utils/demo-auth";
 import { createConsultationSchema } from "@/lib/validators";
+import { logAudit } from "@/lib/audit";
 import { Consultation, ConsultationStatus } from "@/types";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -116,6 +117,14 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    await logAudit({
+      userId: user.id,
+      action: "start_recording",
+      resourceType: "consultation",
+      resourceId: consultation.id,
+      metadata: { visit_type },
+    });
 
     return NextResponse.json(consultation as Consultation, { status: 201 });
   } catch (error) {
