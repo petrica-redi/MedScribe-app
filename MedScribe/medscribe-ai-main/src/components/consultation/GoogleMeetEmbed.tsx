@@ -105,7 +105,7 @@ export function GoogleMeetEmbed({ isRecording }: GoogleMeetEmbedProps) {
               </div>
 
               <p className="text-[11px] text-medical-muted leading-relaxed">
-                💡 Create a meeting, then paste the link above to embed. Audio is captured via screen share for transcription.
+                💡 Open the meeting in a separate tab. When recording starts, select that tab in the share dialog and ensure <strong>&quot;Also share tab audio&quot;</strong> is checked. This captures the patient&apos;s voice for transcription.
               </p>
             </div>
           </div>

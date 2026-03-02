@@ -525,13 +525,18 @@ export default function ConsultationRecordPage() {
           {consultationMode === "remote" && (
             <div className="grid gap-4 lg:grid-cols-2">
               <GoogleMeetEmbed isRecording={isRecording} />
-              <Card>
+              <Card className="border-purple-200 bg-purple-50/30">
                 <CardContent className="pt-4 pb-4">
-                  <h3 className="mb-2 text-xs font-semibold uppercase text-medical-muted">
-                    📋 Audio is captured via your mic + screen share for transcription
+                  <h3 className="mb-2 text-xs font-semibold uppercase text-purple-700">
+                    🎙️ Stereo Capture: Doctor (Mic) + Patient (Tab Audio)
                   </h3>
-                  <p className="text-xs text-medical-muted leading-relaxed">
-                    Share your browser tab audio when prompted to capture the remote participant&apos;s voice. The transcript and AI assistant appear below.
+                  <ul className="text-xs text-purple-800 leading-relaxed space-y-1">
+                    <li>• <strong>Channel 1</strong>: Your microphone captures your voice (Doctor)</li>
+                    <li>• <strong>Channel 2</strong>: The shared tab audio captures the patient&apos;s voice from Google Meet</li>
+                    <li>• Both channels are transcribed independently for accurate speaker separation</li>
+                  </ul>
+                  <p className="text-[11px] text-purple-600 mt-2">
+                    If you didn&apos;t see a tab sharing prompt, or didn&apos;t check &quot;Also share tab audio&quot;, only your voice will be transcribed. Restart recording to fix this.
                   </p>
                 </CardContent>
               </Card>

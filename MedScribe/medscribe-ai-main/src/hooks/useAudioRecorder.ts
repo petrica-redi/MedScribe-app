@@ -73,6 +73,7 @@ export function useAudioRecorder({
   const streamingRef = useRef(false);
   const transcriptRef = useRef<LiveTranscriptItem[]>([]);
   const chunksSentRef = useRef(0);
+  const scriptProcessorRef = useRef<ScriptProcessorNode | null>(null);
 
   const cleanup = useCallback(() => {
     if (
@@ -108,6 +109,11 @@ export function useAudioRecorder({
       wsRef.current = null;
     }
     streamingRef.current = false;
+
+    if (scriptProcessorRef.current) {
+      scriptProcessorRef.current.disconnect();
+      scriptProcessorRef.current = null;
+    }
 
     if (audioContextRef.current?.state !== "closed") {
       audioContextRef.current?.close();
@@ -183,14 +189,20 @@ export function useAudioRecorder({
     let tabStream: MediaStream | null = null;
     try {
       tabStream = await navigator.mediaDevices.getDisplayMedia({
-        audio: true,
-        video: false,
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
+        },
+        video: true,
       });
     } catch {
       isMultichannelRef.current = false;
       setIsMultichannel(false);
       return micStream;
     }
+
+    tabStream.getVideoTracks().forEach((track) => track.stop());
 
     const tabAudioTracks = tabStream.getAudioTracks();
     if (tabAudioTracks.length === 0) {
@@ -200,7 +212,6 @@ export function useAudioRecorder({
       return micStream;
     }
 
-    tabStream.getVideoTracks().forEach((track) => track.stop());
     tabStreamRef.current = tabStream;
 
     const audioCtx = new AudioContext();
@@ -208,12 +219,42 @@ export function useAudioRecorder({
 
     const micSource = audioCtx.createMediaStreamSource(micStream);
     const tabSource = audioCtx.createMediaStreamSource(tabStream);
+
+    // Channel 0 = Doctor (mic), Channel 1 = Patient (tab/Google Meet audio)
     const merger = audioCtx.createChannelMerger(2);
     micSource.connect(merger, 0, 0);
     tabSource.connect(merger, 0, 1);
 
     const dest = audioCtx.createMediaStreamDestination();
     merger.connect(dest);
+
+    // ScriptProcessorNode captures raw interleaved Int16 PCM for Deepgram
+    // multichannel streaming — MediaRecorder downmixes to mono, losing
+    // channel separation, so we bypass it for the WebSocket path.
+    const scriptProcessor = audioCtx.createScriptProcessor(4096, 2, 2);
+    merger.connect(scriptProcessor);
+    const silentGain = audioCtx.createGain();
+    silentGain.gain.value = 0;
+    scriptProcessor.connect(silentGain);
+    silentGain.connect(audioCtx.destination);
+
+    scriptProcessor.onaudioprocess = (event) => {
+      if (!streamingRef.current || wsRef.current?.readyState !== WebSocket.OPEN) return;
+
+      const ch0 = event.inputBuffer.getChannelData(0);
+      const ch1 = event.inputBuffer.getChannelData(1);
+      const length = ch0.length;
+      const interleaved = new Int16Array(length * 2);
+
+      for (let i = 0; i < length; i++) {
+        interleaved[i * 2] = Math.max(-32768, Math.min(32767, Math.round(ch0[i] * 32767)));
+        interleaved[i * 2 + 1] = Math.max(-32768, Math.min(32767, Math.round(ch1[i] * 32767)));
+      }
+
+      wsRef.current.send(interleaved.buffer);
+    };
+
+    scriptProcessorRef.current = scriptProcessor;
 
     const analyser = audioCtx.createAnalyser();
     analyser.fftSize = 256;
@@ -292,16 +333,24 @@ export function useAudioRecorder({
       if (dgKey) {
         setStreamingStatus("connecting WebSocket...");
 
-        const useDiarize = !isMultichannelRef.current;
+        const useMultichannel = isMultichannelRef.current;
+        const sampleRate = audioContextRef.current?.sampleRate || 48000;
         const wsParams = new URLSearchParams({
-          model: language === "en" ? "nova-2" : "nova-2",
+          model: language === "en" ? "nova-3-medical" : "nova-3",
           language,
           smart_format: "true",
           punctuate: "true",
           interim_results: "true",
           endpointing: "300",
           utterance_end_ms: "1000",
-          ...(useDiarize ? { diarize: "true" } : {}),
+          ...(useMultichannel
+            ? {
+                multichannel: "true",
+                channels: "2",
+                encoding: "linear16",
+                sample_rate: String(sampleRate),
+              }
+            : { diarize: "true" }),
         });
 
         const wsUrl = `wss://api.deepgram.com/v1/listen?${wsParams}`;
@@ -339,9 +388,9 @@ export function useAudioRecorder({
                   const alt = data.channel.alternatives?.[0];
                   if (!alt || !alt.transcript) return;
 
-                  const speaker = useDiarize
-                    ? (alt.words?.[0]?.speaker ?? 0)
-                    : (data.channel_index?.[0] ?? 0);
+                  const speaker = useMultichannel
+                    ? (data.channel_index?.[0] ?? 0)
+                    : (alt.words?.[0]?.speaker ?? 0);
                   const isFinal = data.is_final === true;
 
                   const item: LiveTranscriptItem = {
@@ -416,7 +465,10 @@ export function useAudioRecorder({
         if (event.data.size > 0) {
           chunksRef.current.push(event.data);
 
+          // In multichannel mode, raw PCM is sent via ScriptProcessorNode;
+          // MediaRecorder chunks are only sent for single-channel (diarize) mode.
           if (
+            !isMultichannelRef.current &&
             streamingRef.current &&
             wsRef.current?.readyState === WebSocket.OPEN
           ) {

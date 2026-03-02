@@ -1,5 +1,6 @@
 import path from "node:path";
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const isDev = process.env.NODE_ENV !== "production";
 
@@ -35,7 +36,7 @@ const nextConfig: NextConfig = {
             "style-src 'self' 'unsafe-inline'",
             "img-src 'self' data: blob:",
             "font-src 'self'",
-            "connect-src 'self' wss://*.supabase.co https://*.supabase.co wss://api.deepgram.com https://api.deepgram.com https://api.anthropic.com wss://localhost:* http://localhost:* ws://10.211.55.3:* wss://10.211.55.3:* http://10.211.55.3:* https://10.211.55.3:*",
+            "connect-src 'self' wss://*.supabase.co https://*.supabase.co wss://api.deepgram.com https://api.deepgram.com https://api.anthropic.com https://*.ingest.sentry.io wss://localhost:* http://localhost:* ws://10.211.55.3:* wss://10.211.55.3:* http://10.211.55.3:* https://10.211.55.3:*",
             "media-src 'self' blob:",
           ].join("; "),
         },
@@ -44,4 +45,15 @@ const nextConfig: NextConfig = {
   ],
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+
+  widenClientFileUpload: true,
+
+  tunnelRoute: "/monitoring",
+
+  silent: !process.env.CI,
+});

@@ -52,6 +52,9 @@ dist/
 .DS_Store
 Thumbs.db
 
+# Sentry
+.env.sentry-build-plugin
+
 # Supabase
 supabase/.temp/
 .env*.local
