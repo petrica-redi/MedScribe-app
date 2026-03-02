@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { saveDocument } from "@/lib/documents";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
@@ -49,6 +50,26 @@ export async function POST(request: NextRequest) {
     if (updateError) {
       return NextResponse.json({ error: "Failed to save prescription" }, { status: 500 });
     }
+
+    const patientName = (metadata.patient_name as string) || "Patient";
+    const medList = medications
+      .map((m: { name: string; dosage?: string; frequency?: string }) =>
+        `${m.name}${m.dosage ? ` ${m.dosage}` : ""}${m.frequency ? ` — ${m.frequency}` : ""}`)
+      .join("\n");
+
+    await saveDocument(supabase, {
+      consultation_id,
+      user_id: user.id,
+      document_type: "prescription",
+      title: `Prescription — ${patientName}`,
+      content_text: `Medications:\n${medList}${notes ? `\n\nNotes: ${notes}` : ""}`,
+      metadata: {
+        patient_name: patientName,
+        medications_count: medications.length,
+        patient_email: patient_email || null,
+      },
+      source_record_id: newPrescription.id,
+    });
 
     return NextResponse.json(newPrescription, { status: 201 });
   } catch {

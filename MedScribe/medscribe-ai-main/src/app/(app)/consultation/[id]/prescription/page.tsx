@@ -33,8 +33,13 @@ export default function PrescriptionPage() {
   const [error, setError] = useState("");
   const [showPreview, setShowPreview] = useState(false);
   const [patientName, setPatientName] = useState("");
+  const [existingPrescriptions, setExistingPrescriptions] = useState<Array<{
+    id: string;
+    medications: Medication[];
+    notes: string;
+    created_at: string;
+  }>>([]);
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const supabase = createClient();
 
   const loadConsultation = useCallback(async () => {
@@ -47,6 +52,9 @@ export default function PrescriptionPage() {
     if (data?.metadata) {
       const meta = data.metadata as Record<string, unknown>;
       if (typeof meta.patient_name === "string") setPatientName(meta.patient_name);
+      if (Array.isArray(meta.prescriptions)) {
+        setExistingPrescriptions(meta.prescriptions as typeof existingPrescriptions);
+      }
     }
   }, [consultationId]);
 
@@ -93,6 +101,7 @@ export default function PrescriptionPage() {
       }
 
       setSaved(true);
+      loadConsultation();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save prescription");
     } finally {
@@ -115,6 +124,42 @@ export default function PrescriptionPage() {
           ← Back
         </Button>
       </div>
+
+      {/* Existing Prescriptions */}
+      {existingPrescriptions.length > 0 && (
+        <div className="space-y-3">
+          <h2 className="text-lg font-semibold text-medical-text">Saved Prescriptions</h2>
+          {existingPrescriptions.map((rx) => (
+            <Card key={rx.id} className="border-green-200 bg-green-50/30">
+              <CardContent className="pt-4 pb-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-green-700">
+                    {new Date(rx.created_at).toLocaleString()}
+                  </span>
+                  <span className="text-xs text-green-600 bg-green-100 px-2 py-0.5 rounded-full">
+                    {rx.medications.length} medication{rx.medications.length !== 1 ? "s" : ""}
+                  </span>
+                </div>
+                <ul className="text-sm text-medical-text space-y-1">
+                  {rx.medications.map((m: Medication, i: number) => (
+                    <li key={i} className="flex gap-2">
+                      <span className="font-medium">{m.name}</span>
+                      {m.dosage && <span className="text-medical-muted">{m.dosage}</span>}
+                      {m.frequency && <span className="text-medical-muted">— {m.frequency}</span>}
+                      {m.duration && <span className="text-medical-muted">for {m.duration}</span>}
+                    </li>
+                  ))}
+                </ul>
+                {rx.notes && (
+                  <p className="text-xs text-medical-muted italic">{rx.notes}</p>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+          <hr className="border-medical-border" />
+          <h2 className="text-lg font-semibold text-medical-text">Add New Prescription</h2>
+        </div>
+      )}
 
       {/* Medications */}
       <div className="space-y-4">

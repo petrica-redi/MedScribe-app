@@ -6,6 +6,7 @@ import { enforceAIRateLimit } from "@/lib/ai/rate-limit";
 import { logAuditEvent } from "@/lib/audit";
 import { pseudonymize, dePseudonymize } from "@/lib/pseudonymize";
 import type { PatientInfo } from "@/lib/pseudonymize";
+import { saveDocument, templateToDocumentType } from "@/lib/documents";
 import { NextRequest, NextResponse } from "next/server";
 
 const TEMPLATE_PROMPTS: Record<string, { sections: string[]; instruction: string }> = {
@@ -317,6 +318,26 @@ Respond with JSON only.`;
         template,
       }
     );
+
+    const contentText = sections
+      .map((s) => `## ${s.title}\n${s.content}`)
+      .join("\n\n");
+
+    await saveDocument(supabase, {
+      consultation_id,
+      user_id: user.id,
+      document_type: templateToDocumentType(template),
+      title: `${template} — ${patientName}`,
+      content_text: contentText,
+      metadata: {
+        template,
+        patient_name: patientName,
+        visit_type: visitType,
+        ai_model: aiResult.model,
+        billing_codes_count: billingCodes.length,
+      },
+      source_record_id: clinicalNote?.id,
+    });
 
     return NextResponse.json(
       {
