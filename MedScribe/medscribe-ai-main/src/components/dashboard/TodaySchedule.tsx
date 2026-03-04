@@ -3,7 +3,13 @@
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTranslation } from "@/lib/i18n/context";
-import { Calendar } from "lucide-react";
+import { Calendar, FileText, ClipboardList, CheckSquare } from "lucide-react";
+
+interface DocumentRef {
+  id: string;
+  type: string;
+  title: string;
+}
 
 interface ScheduleItem {
   id: string;
@@ -14,6 +20,9 @@ interface ScheduleItem {
   diagnosis: string;
   riskStatus?: string;
   pendingActions?: string;
+  isNewPatient?: boolean;
+  consultationId?: string;
+  documents?: DocumentRef[];
 }
 
 interface TodayScheduleProps {
@@ -65,6 +74,55 @@ function formatDay(dateStr: string): string {
   if (dateObj.getTime() === today.getTime()) return "Today";
   if (dateObj.getTime() === tomorrow.getTime()) return "Tomorrow";
   return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+}
+
+function PendingActionLinks({
+  consultationId,
+  documents,
+}: {
+  consultationId: string;
+  documents: DocumentRef[];
+}) {
+  const noteDoc = documents.find(
+    (d) => d.type === "clinical_note" || d.type === "progress_note"
+  );
+  const formDoc = documents.find(
+    (d) => d.type === "referral_letter" || d.type === "discharge_summary"
+  );
+
+  return (
+    <div className="flex flex-col gap-1">
+      <Link
+        href={`/consultation/${consultationId}/note`}
+        className="inline-flex items-center gap-1 text-xs font-medium text-brand-700 hover:text-brand-900 hover:underline"
+      >
+        <FileText className="h-3 w-3" />
+        Complete form
+      </Link>
+      <Link
+        href={
+          noteDoc
+            ? `/api/documents?consultation_id=${consultationId}`
+            : `/consultation/${consultationId}/note`
+        }
+        className="inline-flex items-center gap-1 text-xs font-medium text-brand-700 hover:text-brand-900 hover:underline"
+      >
+        <ClipboardList className="h-3 w-3" />
+        Fill forms
+      </Link>
+      <Link
+        href={
+          formDoc
+            ? `/consultation/${consultationId}/note`
+            : `/consultation/${consultationId}/note`
+        }
+        className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 hover:text-emerald-900 hover:underline"
+      >
+        <CheckSquare className="h-3 w-3" />
+        Validate &amp; submit
+      </Link>
+    </div>
+  );
 }
 
 export function TodaySchedule({ items }: TodayScheduleProps) {
@@ -132,10 +190,18 @@ export function TodaySchedule({ items }: TodayScheduleProps) {
                     <td className="px-4 py-3">
                       <RiskBadge risk={item.riskStatus} />
                     </td>
-                    <td className="px-4 py-3 text-xs text-medical-muted">
-                      {item.pendingActions || "—"}
+                    <td className="px-4 py-3">
+                      {!item.isNewPatient && item.consultationId ? (
+                        <PendingActionLinks
+                          consultationId={item.consultationId}
+                          documents={item.documents || []}
+                        />
+                      ) : (
+                        <span className="text-xs text-medical-muted">
+                          {item.pendingActions || "—"}
+                        </span>
+                      )}
                     </td>
-                    {/* Day column removed */}
                   </tr>
                 ))}
               </tbody>

@@ -105,6 +105,43 @@ export default async function DashboardPage() {
       .limit(20),
   ]);
 
+  // Fetch clinical notes and documents for today's consultations
+  const todayIds = (todaySchedule || []).map((c) => c.id as string);
+
+  const [{ data: clinicalNotes }, { data: consultDocs }] = todayIds.length > 0
+    ? await Promise.all([
+        supabase
+          .from("clinical_notes")
+          .select("consultation_id, sections, status")
+          .in("consultation_id", todayIds),
+        supabase
+          .from("consultation_documents")
+          .select("id, consultation_id, document_type, title, status")
+          .in("consultation_id", todayIds),
+      ])
+    : [{ data: [] }, { data: [] }];
+
+  // Build lookup maps: consultation_id → diagnosis from assessment section
+  const diagnosisMap = new Map<string, string>();
+  for (const note of clinicalNotes || []) {
+    if (Array.isArray(note.sections)) {
+      const assessment = (note.sections as { id: string; content: string }[]).find(
+        (s) => s.id === "assessment"
+      );
+      if (assessment?.content) {
+        diagnosisMap.set(note.consultation_id, assessment.content);
+      }
+    }
+  }
+
+  // Build lookup: consultation_id → documents[]
+  const docsMap = new Map<string, { id: string; type: string; title: string }[]>();
+  for (const doc of consultDocs || []) {
+    const arr = docsMap.get(doc.consultation_id) || [];
+    arr.push({ id: doc.id, type: doc.document_type, title: doc.title });
+    docsMap.set(doc.consultation_id, arr);
+  }
+
   const statusToPendingAction: Record<string, string> = {
     scheduled: "Start consultation",
     recording: "Recording in progress",
@@ -150,13 +187,30 @@ export default async function DashboardPage() {
       (typeof meta.risk_level === "string" && meta.risk_level) ||
       (typeof meta.risk_status === "string" && meta.risk_status) ||
       "normal";
+    const isNewPatient = (c.visit_type as string || "").toLowerCase().includes("new");
+    const consultId = c.id as string;
+
+    // For non-new patients, pull diagnosis from clinical_notes assessment
+    let diagnosis: string;
+    if (isNewPatient) {
+      diagnosis = "Undocumented";
+    } else {
+      diagnosis = diagnosisMap.get(consultId)
+        || safeString(meta.primary_diagnosis as string | undefined, safeString(meta.diagnosis as string | undefined, "Assessment pending"));
+    }
+
+    const documents = docsMap.get(consultId) || [];
+
     return {
       ...c,
       patientName: safeString(meta.patient_name, "Unnamed Patient"),
       patientCode: safeString(meta.patient_code, c.patient_id?.substring(0, 8) || "—"),
-      diagnosis: safeString(meta.primary_diagnosis, safeString(meta.diagnosis, "Undocumented")),
+      diagnosis,
       riskStatus: riskLevel,
       pendingActions: statusToPendingAction[status] ?? "—",
+      isNewPatient,
+      consultationId: consultId,
+      documents,
     };
   });
 
