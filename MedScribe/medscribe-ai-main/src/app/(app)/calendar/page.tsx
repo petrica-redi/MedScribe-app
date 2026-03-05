@@ -20,7 +20,7 @@ interface CalendarConsultation {
 
 export default function CalendarPage() {
   const supabase = createClient();
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState(() => new Date());
   const [consultations, setConsultations] = useState<CalendarConsultation[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<"month" | "week" | "day">("week");

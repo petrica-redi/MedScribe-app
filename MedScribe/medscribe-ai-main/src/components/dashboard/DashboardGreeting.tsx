@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Sparkles } from "lucide-react";
@@ -11,14 +12,18 @@ interface DashboardGreetingProps {
 
 export function DashboardGreeting({ displayName }: DashboardGreetingProps) {
   const { t } = useTranslation();
+  const [greeting, setGreeting] = useState("");
 
-  const hour = new Date().getHours();
-  const greeting =
-    hour < 12
-      ? t("dashboard.greeting.morning")
-      : hour < 18
-        ? t("dashboard.greeting.afternoon")
-        : t("dashboard.greeting.evening");
+  useEffect(() => {
+    const hour = new Date().getHours();
+    setGreeting(
+      hour < 12
+        ? t("dashboard.greeting.morning")
+        : hour < 18
+          ? t("dashboard.greeting.afternoon")
+          : t("dashboard.greeting.evening")
+    );
+  }, [t]);
 
   return (
     <section className="glass-panel relative overflow-hidden rounded-3xl px-6 py-8 sm:px-8">

@@ -30,11 +30,12 @@ interface TodayScheduleProps {
 }
 
 function formatTime(dateStr: string): string {
-  return new Date(dateStr).toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-  });
+  const d = new Date(dateStr);
+  const h = d.getHours();
+  const m = d.getMinutes().toString().padStart(2, "0");
+  const ampm = h >= 12 ? "PM" : "AM";
+  const h12 = h % 12 || 12;
+  return `${h12.toString().padStart(2, "0")}:${m} ${ampm}`;
 }
 
 function RiskBadge({ risk }: { risk?: string }) {

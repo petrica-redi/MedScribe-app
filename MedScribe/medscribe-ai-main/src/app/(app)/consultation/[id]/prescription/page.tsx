@@ -135,7 +135,7 @@ export default function PrescriptionPage() {
             <Card key={rx.id} className="border-green-200 bg-green-50/30">
               <CardContent className="pt-4 pb-4 space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-green-700">
+                  <span className="text-xs font-medium text-green-700" suppressHydrationWarning>
                     {new Date(rx.created_at).toLocaleString()}
                   </span>
                   <span className="text-xs text-green-600 bg-green-100 px-2 py-0.5 rounded-full">
@@ -268,7 +268,7 @@ export default function PrescriptionPage() {
             </div>
             <div className="flex gap-8 text-sm">
               <div><span className="text-xs text-gray-400 uppercase">Patient</span><p className="font-semibold">{patientName || "—"}</p></div>
-              <div><span className="text-xs text-gray-400 uppercase">Date</span><p className="font-semibold">{new Date().toLocaleDateString()}</p></div>
+              <div><span className="text-xs text-gray-400 uppercase">Date</span><p className="font-semibold" suppressHydrationWarning>{new Date().toLocaleDateString()}</p></div>
             </div>
             <p className="text-3xl font-bold text-blue-600">℞</p>
             <table className="w-full text-sm">

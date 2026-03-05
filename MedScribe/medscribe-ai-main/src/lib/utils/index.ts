@@ -11,22 +11,20 @@ export function formatDuration(seconds: number): string {
   return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
 }
 
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
 export function formatDate(dateString: string): string {
-  return new Date(dateString).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+  const d = new Date(dateString);
+  return `${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
 }
 
 export function formatDateTime(dateString: string): string {
-  return new Date(dateString).toLocaleString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const d = new Date(dateString);
+  const h = d.getHours();
+  const m = d.getMinutes().toString().padStart(2, "0");
+  const ampm = h >= 12 ? "PM" : "AM";
+  const h12 = h % 12 || 12;
+  return `${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}, ${h12.toString().padStart(2, "0")}:${m} ${ampm}`;
 }
 
 export function getStatusColor(status: string): string {
