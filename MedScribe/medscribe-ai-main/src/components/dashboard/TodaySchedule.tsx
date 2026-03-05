@@ -14,6 +14,7 @@ interface DocumentRef {
 interface ScheduleItem {
   id: string;
   visit_type: string;
+  status?: string;
   created_at: string;
   patientName: string;
   patientCode: string;
@@ -79,49 +80,70 @@ function formatDay(dateStr: string): string {
 
 function PendingActionLinks({
   consultationId,
-  documents,
+  status,
 }: {
   consultationId: string;
-  documents: DocumentRef[];
+  status: string;
 }) {
-  const noteDoc = documents.find(
-    (d) => d.type === "clinical_note" || d.type === "progress_note"
-  );
-  const formDoc = documents.find(
-    (d) => d.type === "referral_letter" || d.type === "discharge_summary"
-  );
+  const needsFill = status === "scheduled" || status === "recording" || status === "transcribed";
+  const needsValidate = status === "transcribed" || status === "note_generated";
+  const needsSubmit = status === "reviewed";
+  const allDone = status === "finalized";
+
+  if (allDone) {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600">
+        <CheckSquare className="h-3 w-3" />
+        All completed
+      </span>
+    );
+  }
+
+  const actions: { show: boolean; href: string; icon: typeof FileText; label: string; color: string }[] = [
+    {
+      show: needsFill,
+      href: `/consultation/${consultationId}/note`,
+      icon: FileText,
+      label: "Fill forms",
+      color: "text-brand-700 hover:text-brand-900",
+    },
+    {
+      show: needsValidate,
+      href: `/consultation/${consultationId}/note`,
+      icon: ClipboardList,
+      label: "Validate forms",
+      color: "text-amber-700 hover:text-amber-900",
+    },
+    {
+      show: needsSubmit,
+      href: `/consultation/${consultationId}/note`,
+      icon: CheckSquare,
+      label: "Submit forms",
+      color: "text-emerald-700 hover:text-emerald-900",
+    },
+  ];
+
+  const visible = actions.filter((a) => a.show);
+
+  if (visible.length === 0) {
+    return <span className="text-xs text-medical-muted">—</span>;
+  }
 
   return (
     <div className="flex flex-col gap-1">
-      <Link
-        href={`/consultation/${consultationId}/note`}
-        className="inline-flex items-center gap-1 text-xs font-medium text-brand-700 hover:text-brand-900 hover:underline"
-      >
-        <FileText className="h-3 w-3" />
-        Complete form
-      </Link>
-      <Link
-        href={
-          noteDoc
-            ? `/api/documents?consultation_id=${consultationId}`
-            : `/consultation/${consultationId}/note`
-        }
-        className="inline-flex items-center gap-1 text-xs font-medium text-brand-700 hover:text-brand-900 hover:underline"
-      >
-        <ClipboardList className="h-3 w-3" />
-        Fill forms
-      </Link>
-      <Link
-        href={
-          formDoc
-            ? `/consultation/${consultationId}/note`
-            : `/consultation/${consultationId}/note`
-        }
-        className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 hover:text-emerald-900 hover:underline"
-      >
-        <CheckSquare className="h-3 w-3" />
-        Validate & submit
-      </Link>
+      {visible.map((action) => {
+        const Icon = action.icon;
+        return (
+          <Link
+            key={action.label}
+            href={action.href}
+            className={`inline-flex items-center gap-1 text-xs font-medium hover:underline ${action.color}`}
+          >
+            <Icon className="h-3 w-3" />
+            {action.label}
+          </Link>
+        );
+      })}
     </div>
   );
 }
@@ -195,7 +217,7 @@ export function TodaySchedule({ items }: TodayScheduleProps) {
                       {item.consultationId ? (
                         <PendingActionLinks
                           consultationId={item.consultationId}
-                          documents={item.documents || []}
+                          status={item.status || "scheduled"}
                         />
                       ) : (
                         <span className="text-xs text-medical-muted">
