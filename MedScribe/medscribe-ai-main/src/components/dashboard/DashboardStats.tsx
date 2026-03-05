@@ -246,7 +246,13 @@ export function DashboardStats({
                       >
                         <td className="px-6 py-3">
                           <p className="font-semibold text-medical-text">
-                            {item.patientName}
+                            {item.patient_id ? (
+                              <Link href={`/patients/${item.patient_id}`} className="hover:text-brand-600 hover:underline">
+                                {item.patientName}
+                              </Link>
+                            ) : (
+                              item.patientName
+                            )}
                           </p>
                           {item.diagnosis && (
                             <p className="text-xs text-medical-muted">

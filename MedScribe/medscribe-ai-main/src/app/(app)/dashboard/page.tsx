@@ -270,11 +270,12 @@ export default async function DashboardPage() {
       id: `review-${c.id}`,
       type: c.status === "transcribed" ? "review" : "note",
       patientName: c.patientName,
+      patientId: (c.patient_id as string) || undefined,
       severity: "high",
       title: c.status === "transcribed" ? "Transcript review required" : "Generated note needs approval",
       detail: `${c.visit_type} consultation — ${c.status === "transcribed" ? "Review and generate clinical note" : "Review AI-generated note for accuracy"}`,
       actionLabel: "Open Case",
-      actionHref: c.patient_id ? `/patients/${c.patient_id}` : `/consultation/${c.id}/note`,
+      actionHref: `/consultation/${c.id}/note`,
     });
   }
 
@@ -294,11 +295,13 @@ export default async function DashboardPage() {
             id: `rx-${rx.id}`,
             type: "prescription",
             patientName: rx.patientName,
+            patientId: patientId || undefined,
             severity: rx.status === "overdue" ? "critical" : "high",
             title: `${rx.medication} ${rx.dosage}`,
             detail: rx.expiresIn < 0
               ? `Prescription ${Math.abs(rx.expiresIn)} days overdue — renew immediately`
               : `Expires in ${rx.expiresIn} days — schedule renewal`,
+            actionHref: `/patients/${patientId}`,
           });
         }
       }

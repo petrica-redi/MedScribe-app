@@ -9,6 +9,7 @@ export interface FollowUpItem {
   id: string;
   type: "review" | "prescription" | "lab" | "callback" | "note";
   patientName: string;
+  patientId?: string;
   severity: "critical" | "high" | "medium";
   title: string;
   detail: string;
@@ -75,7 +76,13 @@ export function PriorityQueue({ items }: PriorityQueueProps) {
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <span className="font-semibold text-xs text-medical-text">{item.patientName}</span>
+                {item.patientId ? (
+                  <Link href={`/patients/${item.patientId}`} className="font-semibold text-xs text-medical-text hover:text-brand-600 hover:underline">
+                    {item.patientName}
+                  </Link>
+                ) : (
+                  <span className="font-semibold text-xs text-medical-text">{item.patientName}</span>
+                )}
                 <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-medium ${severityBadge[item.severity]}`}>
                   {typeLabels[item.type]}
                 </span>
