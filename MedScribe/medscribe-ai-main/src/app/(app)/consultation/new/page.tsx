@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useTranslation } from "@/lib/i18n/context";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { UserCheck, UserPlus } from "lucide-react";
 import type { Consultation, Patient } from "@/types";
 
 const VISIT_TYPES = [
@@ -57,12 +58,43 @@ export default function NewConsultationPage() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+  const resolvePatientId = async (userId: string): Promise<string | null> => {
+    const trimmedName = patientName.trim();
+    if (!trimmedName) return null;
+
+    if (selectedPatientId) return selectedPatientId;
+
+    // Check for exact name match in the database to prevent duplicates
+    const { data: existing } = await supabase
+      .from("patients")
+      .select("id, full_name")
+      .eq("user_id", userId)
+      .ilike("full_name", trimmedName)
+      .limit(1);
+
+    if (existing && existing.length > 0) {
+      return existing[0].id;
+    }
+
+    // No match found — create a new patient record
+    const { data: newPatient, error: createErr } = await supabase
+      .from("patients")
+      .insert({ user_id: userId, full_name: trimmedName })
+      .select()
+      .single();
+
+    if (createErr || !newPatient) {
+      throw new Error("Failed to create patient record");
+    }
+
+    return newPatient.id;
+  };
+
   const handleStartRecording = async () => {
     setError("");
     setIsLoading(true);
 
     try {
-      // Get current user session
       const {
         data: { session },
       } = await supabase.auth.getSession();
@@ -73,17 +105,18 @@ export default function NewConsultationPage() {
         return;
       }
 
-      // Create new consultation record in Supabase
+      const patientId = await resolvePatientId(session.user.id);
+
       const consultationData: Partial<Consultation> = {
         user_id: session.user.id,
-        patient_id: selectedPatientId || null,
+        patient_id: patientId,
         visit_type: visitType,
         status: "recording",
-        consent_given: false, // Will be set during recording phase
+        consent_given: false,
         consent_timestamp: null,
         recording_duration_seconds: null,
         metadata: {
-          patient_name: patientName || null,
+          patient_name: patientName.trim() || null,
           initial_notes: notes || null,
         },
       };
@@ -102,7 +135,6 @@ export default function NewConsultationPage() {
         throw new Error("No consultation ID returned");
       }
 
-      // Redirect to recording page with new consultation ID
       router.push(`/consultation/${data.id}/record`);
     } catch (err) {
       const message =
@@ -138,28 +170,51 @@ export default function NewConsultationPage() {
             <label htmlFor="patientName" className="block text-sm font-medium text-medical-text">
               {t("consultation.patientName")}
             </label>
-            <input
-              id="patientName"
-              type="text"
-              placeholder={t("consultation.searchPatient")}
-              value={patientName}
-              onChange={(e) => { setPatientName(e.target.value); setSelectedPatientId(null); }}
-              onFocus={() => patientSuggestions.length > 0 && setShowSuggestions(true)}
-              className="mt-2 block w-full rounded-lg border border-medical-border px-4 py-2.5 text-medical-text placeholder-medical-muted focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
-            />
+            <div className="relative mt-2">
+              <input
+                id="patientName"
+                type="text"
+                placeholder={t("consultation.searchPatient")}
+                value={patientName}
+                onChange={(e) => { setPatientName(e.target.value); setSelectedPatientId(null); }}
+                onFocus={() => patientSuggestions.length > 0 && setShowSuggestions(true)}
+                className={`block w-full rounded-lg border px-4 py-2.5 pr-10 text-medical-text placeholder-medical-muted focus:outline-none focus:ring-2 ${
+                  selectedPatientId
+                    ? "border-green-300 focus:border-green-500 focus:ring-green-500/20"
+                    : "border-medical-border focus:border-brand-500 focus:ring-brand-500/20"
+                }`}
+              />
+              {selectedPatientId && (
+                <UserCheck className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-green-600" />
+              )}
+            </div>
             {selectedPatientId && (
-              <span className="absolute right-3 top-[calc(50%+4px)] text-xs text-green-600 font-medium">{t("consultation.linked")}</span>
+              <p className="mt-1.5 flex items-center gap-1.5 text-xs font-medium text-green-600">
+                <UserCheck className="h-3.5 w-3.5" />
+                Linked to existing patient record
+              </p>
+            )}
+            {patientName.trim().length >= 2 && !selectedPatientId && patientSuggestions.length === 0 && !showSuggestions && (
+              <p className="mt-1.5 flex items-center gap-1.5 text-xs font-medium text-amber-600">
+                <UserPlus className="h-3.5 w-3.5" />
+                New patient — a record will be created automatically
+              </p>
             )}
             {showSuggestions && patientSuggestions.length > 0 && (
-              <div className="absolute left-0 right-0 top-full z-10 mt-1 rounded-lg border border-medical-border bg-white shadow-lg">
+              <div className="absolute left-0 right-0 top-full z-10 mt-1 overflow-hidden rounded-lg border border-medical-border bg-white shadow-lg">
+                <p className="border-b border-medical-border bg-slate-50 px-4 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-medical-muted">
+                  Existing patients
+                </p>
                 {patientSuggestions.map((p) => (
                   <button
                     key={p.id}
                     onClick={() => { setPatientName(p.full_name); setSelectedPatientId(p.id); setShowSuggestions(false); }}
-                    className="w-full px-4 py-2.5 text-left text-sm hover:bg-blue-50 transition"
+                    className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm transition hover:bg-blue-50"
                   >
+                    <UserCheck className="h-4 w-4 shrink-0 text-green-500" />
                     <span className="font-medium text-medical-text">{p.full_name}</span>
-                    {p.mrn && <span className="ml-2 text-xs text-medical-muted">MRN: {p.mrn}</span>}
+                    {p.mrn && <span className="ml-auto text-xs text-medical-muted">MRN: {p.mrn}</span>}
+                    {p.date_of_birth && <span className="text-xs text-medical-muted">DOB: {p.date_of_birth}</span>}
                   </button>
                 ))}
               </div>
