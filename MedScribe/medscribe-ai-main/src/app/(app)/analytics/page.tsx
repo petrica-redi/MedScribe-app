@@ -65,6 +65,7 @@ export default function AnalyticsPage() {
   const [filterDateTo, setFilterDateTo] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [activeTab, setActiveTab] = useState<"overview" | "reports">("overview");
+  const [visitTypePeriod, setVisitTypePeriod] = useState<"week" | "month">("week");
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -163,10 +164,40 @@ export default function AnalyticsPage() {
   const durations = consultations.filter((c) => c.recording_duration_seconds).map((c) => c.recording_duration_seconds!);
   const avgDuration = durations.length > 0 ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length) : 0;
 
-  // Visit type distribution
+  // Visit type normalization map — merges duplicates like "follow-up" / "Follow-up"
+  const normalizeVisitType = (raw: string): string => {
+    const lower = raw.trim().toLowerCase().replace(/[-_]/g, " ");
+    const map: Record<string, string> = {
+      "follow up": "Follow-up",
+      "follow up visit": "Follow-up",
+      "followup": "Follow-up",
+      "general": "General Visit",
+      "general visit": "General Visit",
+      "new patient": "New Patient",
+      "new patient visit": "New Patient",
+      "routine check up": "Routine Check-up",
+      "routine check-up": "Routine Check-up",
+      "routine checkup": "Routine Check-up",
+      "urgent care": "Urgent Care",
+      "emergency": "Emergency",
+      "specialist consultation": "Specialist Consultation",
+      "specialist referral": "Specialist Referral",
+      "telehealth": "Telehealth",
+      "mental health session": "Mental Health Session",
+    };
+    return map[lower] || raw.charAt(0).toUpperCase() + raw.slice(1);
+  };
+
+  // Visit type distribution filtered by period
+  const visitTypePeriodCutoff = visitTypePeriod === "week" ? sevenDaysAgo : thirtyDaysAgo;
+  const visitTypeConsultations = consultations.filter((c) => new Date(c.created_at) >= visitTypePeriodCutoff);
   const visitTypeCounts: Record<string, number> = {};
-  consultations.forEach((c) => { visitTypeCounts[c.visit_type] = (visitTypeCounts[c.visit_type] || 0) + 1; });
+  visitTypeConsultations.forEach((c) => {
+    const normalized = normalizeVisitType(c.visit_type);
+    visitTypeCounts[normalized] = (visitTypeCounts[normalized] || 0) + 1;
+  });
   const visitTypes = Object.entries(visitTypeCounts).sort((a, b) => b[1] - a[1]);
+  const visitTypeTotal = visitTypeConsultations.length;
 
   // Status distribution
   const statusCounts: Record<string, number> = {};
@@ -726,7 +757,25 @@ export default function AnalyticsPage() {
 
             {/* Visit Types */}
             <Card>
-              <CardHeader><CardTitle>{t("analytics.visitTypes")}</CardTitle></CardHeader>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle>{t("analytics.visitTypes")}</CardTitle>
+                  <div className="flex rounded-lg border border-medical-border overflow-hidden text-xs">
+                    <button
+                      onClick={() => setVisitTypePeriod("week")}
+                      className={`px-3 py-1 transition ${visitTypePeriod === "week" ? "bg-brand-500 text-white" : "text-medical-muted hover:bg-gray-50"}`}
+                    >
+                      This Week
+                    </button>
+                    <button
+                      onClick={() => setVisitTypePeriod("month")}
+                      className={`px-3 py-1 transition ${visitTypePeriod === "month" ? "bg-brand-500 text-white" : "text-medical-muted hover:bg-gray-50"}`}
+                    >
+                      This Month
+                    </button>
+                  </div>
+                </div>
+              </CardHeader>
               <CardContent>
                 {visitTypes.length > 0 ? (
                   <div className="space-y-3">
@@ -735,15 +784,20 @@ export default function AnalyticsPage() {
                         <span className="text-sm text-medical-text">{type}</span>
                         <div className="flex items-center gap-2">
                           <div className="w-24 h-2 bg-gray-100 rounded-full overflow-hidden">
-                            <div className="h-full bg-indigo-400 rounded-full" style={{ width: `${(count / totalCount) * 100}%` }} />
+                            <div className="h-full bg-indigo-400 rounded-full" style={{ width: `${(count / visitTypeTotal) * 100}%` }} />
                           </div>
                           <span className="text-xs font-medium text-medical-muted w-6 text-right">{count}</span>
                         </div>
                       </div>
                     ))}
+                    <p className="text-xs text-medical-muted pt-1 border-t border-medical-border mt-2">
+                      {visitTypeTotal} consultations {visitTypePeriod === "week" ? "this week" : "this month"}
+                    </p>
                   </div>
                 ) : (
-                  <p className="text-sm text-medical-muted text-center py-4">{t("analytics.noConsultations")}</p>
+                  <p className="text-sm text-medical-muted text-center py-4">
+                    No consultations {visitTypePeriod === "week" ? "this week" : "this month"}
+                  </p>
                 )}
               </CardContent>
             </Card>
