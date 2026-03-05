@@ -7,6 +7,8 @@ import { useAudioRecorder } from "@/hooks/useAudioRecorder";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatDuration } from "@/lib/utils";
+import { useTranslation } from "@/lib/i18n/context";
+import { translateVisitType } from "@/lib/i18n/visitTypes";
 import { AudioVisualizer } from "@/components/consultation/AudioVisualizer";
 import { AIAssistantPanel } from "@/components/consultation/AIAssistantPanel";
 import { GoogleMeetEmbed } from "@/components/consultation/GoogleMeetEmbed";
@@ -47,6 +49,7 @@ export default function ConsultationRecordPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const supabase = createClient();
+  const { t } = useTranslation();
   const consultationId = params?.id;
   const transcriptEndRef = useRef<HTMLDivElement>(null);
 
@@ -239,7 +242,7 @@ export default function ConsultationRecordPage() {
       <div className="flex h-screen items-center justify-center">
         <div className="text-center">
           <div className="mb-4 h-12 w-12 animate-spin rounded-full border-4 border-gray-200 border-t-brand-600" />
-          <p className="text-medical-text">Loading consultation...</p>
+          <p className="text-medical-text">{t("record.loadingConsultation")}</p>
         </div>
       </div>
     );
@@ -249,9 +252,9 @@ export default function ConsultationRecordPage() {
     return (
       <div className="mx-auto max-w-4xl p-6">
         <div className="rounded-lg border border-red-200 bg-red-50 p-6">
-          <h2 className="text-lg font-semibold text-red-900">Error</h2>
+          <h2 className="text-lg font-semibold text-red-900">{t("record.error")}</h2>
           <p className="mt-2 text-red-800">{error}</p>
-          <Button onClick={() => router.back()} variant="outline" className="mt-4">Go Back</Button>
+          <Button onClick={() => router.back()} variant="outline" className="mt-4">{t("record.goBack")}</Button>
         </div>
       </div>
     );
@@ -273,11 +276,11 @@ export default function ConsultationRecordPage() {
                 ))}
               </div>
               <p className="text-sm font-medium text-medical-muted">
-                {streamingActive ? "Listening... Transcript appears in real-time" : "Listening... Speak naturally."}
+                {streamingActive ? t("record.listeningStreaming") : t("record.listeningSpeaking")}
               </p>
             </>
           ) : (
-            <p className="text-sm text-medical-muted">No transcript yet</p>
+            <p className="text-sm text-medical-muted">{t("record.noTranscript")}</p>
           )}
         </div>
       ) : (
@@ -299,7 +302,7 @@ export default function ConsultationRecordPage() {
                 >
                   <div className="flex items-center gap-2 mb-1">
                     <span className={`text-[10px] font-bold uppercase tracking-wider ${isDoctor ? "text-blue-600" : "text-green-600"}`}>
-                      {isDoctor ? "Doctor" : "Patient"}
+                      {isDoctor ? t("record.doctor") : t("record.patientSpeaker")}
                     </span>
                     {item.timestamp > 0 && (
                       <span className="text-[10px] text-gray-400">{formatDuration(Math.round(item.timestamp))}</span>
@@ -325,24 +328,24 @@ export default function ConsultationRecordPage() {
       {phase === "pre" && (
         <div className="flex flex-col items-center gap-8 py-16">
           <div className="text-center">
-            <h1 className="text-3xl font-bold text-medical-text">Start Consultation</h1>
-            <p className="mt-2 text-medical-muted">Ensure patient consent before recording.</p>
+            <h1 className="text-3xl font-bold text-medical-text">{t("record.startConsultation")}</h1>
+            <p className="mt-2 text-medical-muted">{t("record.ensureConsent")}</p>
           </div>
 
           {patientName && (
             <Card className="w-full max-w-md">
               <CardContent className="space-y-2 pt-6">
-                <p className="text-sm font-medium text-medical-muted">Patient</p>
+                <p className="text-sm font-medium text-medical-muted">{t("record.patient")}</p>
                 <p className="text-lg font-semibold text-medical-text">{patientName}</p>
-                <p className="text-sm text-medical-muted">Visit Type: {consultationData?.visit_type ?? "General"}</p>
+                <p className="text-sm text-medical-muted">{t("record.visitType")}: {consultationData?.visit_type ? translateVisitType(consultationData.visit_type, t) : t("visit.generalVisit")}</p>
               </CardContent>
             </Card>
           )}
 
           <Card className="w-full max-w-md">
             <CardContent className="space-y-3 pt-6">
-              <p className="text-sm font-medium text-medical-text">Consultation Mode</p>
-              <p className="text-xs text-medical-muted">Select how the consultation is being conducted for optimal speaker separation.</p>
+              <p className="text-sm font-medium text-medical-text">{t("record.consultationMode")}</p>
+              <p className="text-xs text-medical-muted">{t("record.modeDescription")}</p>
               <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
@@ -356,8 +359,8 @@ export default function ConsultationRecordPage() {
                   <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
                   </svg>
-                  <span className="font-medium">In-Person</span>
-                  <span className="text-xs text-center leading-tight">Single mic + Diarization</span>
+                  <span className="font-medium">{t("record.inPerson")}</span>
+                  <span className="text-xs text-center leading-tight">{t("record.singleMic")}</span>
                 </button>
                 <button
                   type="button"
@@ -371,8 +374,8 @@ export default function ConsultationRecordPage() {
                   <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25h-9A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25Z" />
                   </svg>
-                  <span className="font-medium">Remote Video Call</span>
-                  <span className="text-xs text-center leading-tight">Mic + tab audio</span>
+                  <span className="font-medium">{t("record.remoteCall")}</span>
+                  <span className="text-xs text-center leading-tight">{t("record.micTab")}</span>
                 </button>
               </div>
             </CardContent>
@@ -380,7 +383,7 @@ export default function ConsultationRecordPage() {
 
           <Card className="w-full max-w-md">
             <CardContent className="space-y-3 pt-6">
-              <p className="text-sm font-medium text-medical-text">Consultation Language</p>
+              <p className="text-sm font-medium text-medical-text">{t("record.consultationLanguage")}</p>
               <select
                 value={selectedLanguage}
                 onChange={(e) => setSelectedLanguage(e.target.value)}
@@ -400,28 +403,28 @@ export default function ConsultationRecordPage() {
                 <svg className="h-5 w-5 text-indigo-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456Z" />
                 </svg>
-                <p className="text-sm font-semibold text-indigo-900">AI Transparency Notice</p>
+                <p className="text-sm font-semibold text-indigo-900">{t("record.aiNotice")}</p>
               </div>
               <ul className="space-y-1.5 text-xs text-indigo-800 leading-relaxed">
                 <li className="flex items-start gap-2">
                   <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-400" />
-                  <span><strong>Real-time transcription</strong> is powered by AI — audio is streamed to a secure external service for speech-to-text processing.</span>
+                  <span><strong>{t("record.aiNotice1")}</strong> {t("record.aiNotice1Desc")}</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-400" />
-                  <span><strong>Clinical analysis &amp; note generation</strong> are powered by AI — transcript text is sent for AI-assisted diagnostic suggestions and documentation.</span>
+                  <span><strong>{t("record.aiNotice2")}</strong> {t("record.aiNotice2Desc")}</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-400" />
-                  <span>AI suggestions are <strong>not a substitute for clinical judgment</strong>. Always verify AI-generated content before use.</span>
+                  <span>{t("record.aiNotice3Pre")} <strong>{t("record.aiNotice3Bold")}</strong>{t("record.aiNotice3Post")}</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-400" />
-                  <span>The patient <strong>should be informed</strong> that AI technology is used during this consultation for transcription and analysis.</span>
+                  <span>{t("record.aiNotice4Pre")} <strong>{t("record.aiNotice4Bold")}</strong> {t("record.aiNotice4Post")}</span>
                 </li>
               </ul>
               <a href="/privacy#ai-transparency" target="_blank" className="inline-block text-xs text-indigo-600 hover:underline mt-1">
-                Read our full AI Transparency policy →
+                {t("record.aiPolicyLink")}
               </a>
             </CardContent>
           </Card>
@@ -434,25 +437,22 @@ export default function ConsultationRecordPage() {
               className="mt-1 h-5 w-5 rounded border-gray-300 text-brand-600"
             />
             <span className="text-sm leading-relaxed text-medical-text">
-              I confirm that the patient has been fully informed about this audio recording
-              and the use of AI for transcription and clinical analysis,
-              understands it will be used for clinical documentation purposes, and has explicitly
-              consented to being recorded.
+              {t("record.consentText")}
             </span>
           </label>
 
           <div className="flex items-center gap-2 rounded-lg bg-gray-50 px-4 py-2">
             <div className={`h-2 w-2 rounded-full ${connectionStatus === "connecting" ? "bg-yellow-500 animate-pulse" : connectionStatus === "error" ? "bg-red-500" : "bg-green-500"}`} />
             <span className="text-sm text-medical-muted">
-              Ready to record (AI transcription — Real-time streaming)
+              {t("record.readyToRecord")}
             </span>
           </div>
 
           {/* Waiting Room Link */}
           <Card className="w-full max-w-md">
             <CardContent className="space-y-2 pt-6">
-              <p className="text-sm font-medium text-medical-text">Patient Waiting Room</p>
-              <p className="text-xs text-medical-muted">Share this link with the patient so they can wait and join when ready.</p>
+              <p className="text-sm font-medium text-medical-text">{t("record.waitingRoom")}</p>
+              <p className="text-xs text-medical-muted">{t("record.waitingRoomDesc")}</p>
               <div className="flex gap-2">
                 <code className="flex-1 rounded bg-gray-100 px-3 py-2 text-xs text-gray-600 truncate">
                   {typeof window !== "undefined" ? `${window.location.origin}/waiting-room/${consultationId}` : `/waiting-room/${consultationId}`}
@@ -465,7 +465,7 @@ export default function ConsultationRecordPage() {
                     navigator.clipboard.writeText(link);
                   }}
                 >
-                  Copy
+                  {t("record.copy")}
                 </Button>
               </div>
             </CardContent>
@@ -490,7 +490,7 @@ export default function ConsultationRecordPage() {
           <div className="flex items-center justify-between rounded-lg bg-gray-50 p-3">
             <div className="flex items-center gap-3">
               <span className="inline-flex h-3 w-3 animate-pulse rounded-full bg-medical-recording" />
-              <span className="text-lg font-semibold text-medical-recording">Recording</span>
+              <span className="text-lg font-semibold text-medical-recording">{t("record.recording")}</span>
               <span className="text-lg font-mono text-medical-text">{formatDuration(duration)}</span>
             </div>
             <div className="flex items-center gap-2">
@@ -498,11 +498,11 @@ export default function ConsultationRecordPage() {
                 <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z" />
                 </svg>
-                {isMultichannel ? "Stereo (Mic + Tab)" : "Single Mic (Diarization)"}
+                {isMultichannel ? t("record.stereoCapture") : t("record.singleMicDiarization")}
               </div>
               <div className={`flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium ${streamingActive ? "bg-purple-100 text-purple-700" : "bg-green-100 text-green-700"}`}>
                 <div className={`h-2 w-2 rounded-full ${streamingActive ? "bg-purple-500 animate-pulse" : "bg-green-500"}`} />
-                {streamingActive ? "Streaming Live" : "Connected"}
+                {streamingActive ? t("record.streamingLive") : t("record.connected")}
               </div>
             </div>
           </div>
@@ -515,7 +515,7 @@ export default function ConsultationRecordPage() {
                 ? "bg-red-50 text-red-700 border border-red-200"
                 : "bg-amber-50 text-amber-700 border border-amber-200"
             }`}>
-              Stream: {streamingStatus}
+              {t("record.stream")}: {streamingStatus}
             </div>
           )}
 
@@ -528,15 +528,15 @@ export default function ConsultationRecordPage() {
               <Card className="border-purple-200 bg-purple-50/30">
                 <CardContent className="pt-4 pb-4">
                   <h3 className="mb-2 text-xs font-semibold uppercase text-purple-700">
-                    🎙️ Stereo Capture: Doctor (Mic) + Patient (Tab Audio)
+                    🎙️ {t("record.stereoTitle")}
                   </h3>
                   <ul className="text-xs text-purple-800 leading-relaxed space-y-1">
-                    <li>• <strong>Channel 1</strong>: Your microphone captures your voice (Doctor)</li>
-                    <li>• <strong>Channel 2</strong>: The shared tab audio captures the patient&apos;s voice from Google Meet</li>
-                    <li>• Both channels are transcribed independently for accurate speaker separation</li>
+                    <li>• <strong>{t("record.channel1")}</strong>: {t("record.channel1Desc")}</li>
+                    <li>• <strong>{t("record.channel2")}</strong>: {t("record.channel2Desc")}</li>
+                    <li>• {t("record.channelsBoth")}</li>
                   </ul>
                   <p className="text-[11px] text-purple-600 mt-2">
-                    If you didn&apos;t see a tab sharing prompt, or didn&apos;t check &quot;Also share tab audio&quot;, only your voice will be transcribed. Restart recording to fix this.
+                    {t("record.tabSharingHint")}
                   </p>
                 </CardContent>
               </Card>
@@ -549,13 +549,13 @@ export default function ConsultationRecordPage() {
               <Card>
                 <CardContent className="pt-4 pb-4">
                   <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-sm font-semibold uppercase text-medical-muted">Live Conversation</h3>
+                    <h3 className="text-sm font-semibold uppercase text-medical-muted">{t("record.liveConversation")}</h3>
                     <div className="flex items-center gap-2">
                       <span className="flex items-center gap-1.5 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-600">
-                        <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />Doctor
+                        <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />{t("record.doctor")}
                       </span>
                       <span className="flex items-center gap-1.5 rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-medium text-green-600">
-                        <span className="h-1.5 w-1.5 rounded-full bg-green-500" />Patient
+                        <span className="h-1.5 w-1.5 rounded-full bg-green-500" />{t("record.patientSpeaker")}
                       </span>
                     </div>
                   </div>
@@ -565,11 +565,11 @@ export default function ConsultationRecordPage() {
 
               <Card>
                 <CardContent className="pt-4 pb-4">
-                  <h3 className="mb-2 text-xs font-semibold uppercase text-medical-muted">Session Notes</h3>
+                  <h3 className="mb-2 text-xs font-semibold uppercase text-medical-muted">{t("record.sessionNotes")}</h3>
                   <textarea
                     value={sessionNotes}
                     onChange={(e) => setSessionNotes(e.target.value)}
-                    placeholder="Add your own notes during the session..."
+                    placeholder={t("record.sessionNotesPlaceholder")}
                     className="w-full min-h-[80px] rounded-lg border border-medical-border bg-white px-3 py-2 text-sm text-medical-text placeholder-medical-muted focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 resize-y"
                   />
                 </CardContent>
@@ -590,10 +590,10 @@ export default function ConsultationRecordPage() {
           {/* Controls */}
           <div className="flex gap-3">
             <Button onClick={isPaused ? resumeRecording : pauseRecording} variant="outline" size="md" className="flex-1">
-              {isPaused ? "Resume" : "Pause"}
+              {isPaused ? t("record.resume") : t("record.pause")}
             </Button>
             <Button onClick={handleEndRecording} disabled={isTranscribing} variant="danger" size="md" className="flex-1">
-              End Consultation
+              {t("record.endConsultation")}
             </Button>
           </div>
 
@@ -610,9 +610,9 @@ export default function ConsultationRecordPage() {
         <div className="space-y-6 py-8">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-bold text-medical-text">Consultation Complete</h2>
+              <h2 className="text-2xl font-bold text-medical-text">{t("record.consultationComplete")}</h2>
               <p className="mt-2 text-medical-muted">
-                Duration: {formatDuration(duration)} &middot; {transcript.filter(t => t.isFinal).length} segments
+                {t("record.duration")}: {formatDuration(duration)} &middot; {transcript.filter(t => t.isFinal).length} {t("record.segments")}
               </p>
             </div>
             <Button
@@ -639,14 +639,14 @@ export default function ConsultationRecordPage() {
               <svg className="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
               </svg>
-              Export Transcript
+              {t("record.exportTranscript")}
             </Button>
           </div>
 
           <div className="grid gap-6 lg:grid-cols-2">
             <Card>
               <CardContent className="space-y-4 pt-6">
-                <h3 className="font-semibold text-medical-text">Transcript Review</h3>
+                <h3 className="font-semibold text-medical-text">{t("record.transcriptReview")}</h3>
                 {renderTranscriptBubbles(transcript.filter(t => t.isFinal), "max-h-[500px]")}
               </CardContent>
             </Card>
@@ -662,7 +662,7 @@ export default function ConsultationRecordPage() {
           {sessionNotes.trim() && (
             <Card>
               <CardContent className="space-y-3 pt-6">
-                <h3 className="font-semibold text-medical-text">Session Notes (Manual)</h3>
+                <h3 className="font-semibold text-medical-text">{t("record.sessionNotesManual")}</h3>
                 <div className="rounded-lg bg-amber-50 border border-amber-200 p-4 text-sm text-medical-text whitespace-pre-wrap">{sessionNotes}</div>
               </CardContent>
             </Card>
@@ -679,7 +679,7 @@ export default function ConsultationRecordPage() {
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
               </svg>
-              Write Prescription
+              {t("record.writePrescription")}
             </Button>
             <Button
               variant="ghost"
@@ -693,14 +693,14 @@ export default function ConsultationRecordPage() {
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m9.86-2.54a4.5 4.5 0 0 0-1.242-7.244l-4.5-4.5a4.5 4.5 0 0 0-6.364 6.364L4.757 8.188" />
               </svg>
-              Copy Waiting Room Link
+              {t("record.copyWaitingRoomLink")}
             </Button>
           </div>
 
           <Card>
             <CardContent className="space-y-4 pt-6">
               <div>
-                <label htmlFor="template" className="block text-sm font-medium text-medical-text">Select Note Template</label>
+                <label htmlFor="template" className="block text-sm font-medium text-medical-text">{t("record.selectTemplate")}</label>
                 <select
                   id="template"
                   value={selectedTemplate}
@@ -725,9 +725,9 @@ export default function ConsultationRecordPage() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                     </svg>
-                    Generating Clinical Note...
+                    {t("record.generatingNote")}
                   </span>
-                ) : "Generate Clinical Note"}
+                ) : t("record.generateNote")}
               </Button>
             </CardContent>
           </Card>
