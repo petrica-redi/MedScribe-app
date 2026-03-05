@@ -23,9 +23,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${manrope.variable} ${fraunces.variable} font-sans bg-medical-bg text-medical-text antialiased`}
+        suppressHydrationWarning
       >
         {children}
       </body>
