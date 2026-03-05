@@ -57,8 +57,8 @@ export default function TermsOfServicePage() {
               By using the Service, you acknowledge and agree that:
             </p>
             <ul className="list-disc pl-6 space-y-1 mt-2">
-              <li>Audio recordings will be transmitted to third-party transcription services (Deepgram)</li>
-              <li>Transcript data will be processed by AI models (Anthropic Claude) for note generation</li>
+              <li>Audio recordings will be transmitted to secure third-party transcription services</li>
+              <li>Transcript data will be processed by AI models for clinical note generation</li>
               <li>All data is stored in encrypted databases (Supabase) with row-level security</li>
               <li>You are the data controller for patient data; MedScribe AI acts as a data processor</li>
               <li>Our processing activities are described in detail in our <Link href="/privacy" className="text-blue-600 hover:underline">Privacy Policy</Link></li>

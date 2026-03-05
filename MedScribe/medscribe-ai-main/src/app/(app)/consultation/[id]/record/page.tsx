@@ -405,11 +405,11 @@ export default function ConsultationRecordPage() {
               <ul className="space-y-1.5 text-xs text-indigo-800 leading-relaxed">
                 <li className="flex items-start gap-2">
                   <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-400" />
-                  <span><strong>Real-time transcription</strong> is powered by AI (Deepgram) — audio is streamed to an external service for speech-to-text processing.</span>
+                  <span><strong>Real-time transcription</strong> is powered by AI — audio is streamed to a secure external service for speech-to-text processing.</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-400" />
-                  <span><strong>Clinical analysis &amp; note generation</strong> are powered by AI (Anthropic Claude) — transcript text is sent for AI-assisted diagnostic suggestions and documentation.</span>
+                  <span><strong>Clinical analysis &amp; note generation</strong> are powered by AI — transcript text is sent for AI-assisted diagnostic suggestions and documentation.</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-400" />
@@ -444,7 +444,7 @@ export default function ConsultationRecordPage() {
           <div className="flex items-center gap-2 rounded-lg bg-gray-50 px-4 py-2">
             <div className={`h-2 w-2 rounded-full ${connectionStatus === "connecting" ? "bg-yellow-500 animate-pulse" : connectionStatus === "error" ? "bg-red-500" : "bg-green-500"}`} />
             <span className="text-sm text-medical-muted">
-              Ready to record (Deepgram {selectedLanguage === "en" ? "Nova 3 Medical" : "Nova 3"} — Real-time streaming)
+              Ready to record (AI transcription — Real-time streaming)
             </span>
           </div>
 

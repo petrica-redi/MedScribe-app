@@ -1095,20 +1095,20 @@ function AuditLogSection({ supabase }: { supabase: ReturnType<typeof createClien
 // ============================================================================
 const DATA_PROCESSORS = [
   {
-    name: "Deepgram",
+    name: "AI Transcription Service",
     purpose: "Real-time audio transcription (speech-to-text)",
     dataShared: "Audio streams from consultation recordings",
     dpaStatus: "pending" as const,
-    privacyUrl: "https://deepgram.com/privacy",
-    notes: "Audio is processed transiently and not retained after transcription. Uses Nova Medical model for clinical accuracy.",
+    privacyUrl: "",
+    notes: "Audio is processed transiently and not retained after transcription. Uses a medical-grade speech model for clinical accuracy.",
   },
   {
-    name: "Anthropic",
+    name: "AI Analysis Service",
     purpose: "AI clinical analysis and note generation",
     dataShared: "Transcript text, visit type, patient name (for context)",
     dpaStatus: "pending" as const,
-    privacyUrl: "https://www.anthropic.com/privacy",
-    notes: "Claude AI is used for diagnostic suggestions, drug interaction checks, and clinical note generation. API data is not used for model training.",
+    privacyUrl: "",
+    notes: "Used for diagnostic suggestions, drug interaction checks, and clinical note generation. API data is not used for model training.",
   },
   {
     name: "Supabase",

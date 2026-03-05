@@ -70,12 +70,12 @@ export default function PrivacyPolicyPage() {
             <p>We use the following third-party processors to deliver our services:</p>
             <ul className="list-disc pl-6 space-y-2 mt-2">
               <li>
-                <strong>Deepgram</strong> (Nova Medical model) — Audio transcription service. Audio data is transmitted
-                securely for real-time transcription. Deepgram processes audio transiently and does not retain recordings.
+                <strong>AI Transcription Service</strong> — Audio transcription service. Audio data is transmitted
+                securely for real-time transcription. Audio is processed transiently and is not retained after processing.
               </li>
               <li>
-                <strong>Anthropic</strong> (Claude AI) — AI clinical analysis and note generation. Transcript text is
-                sent for AI processing. Anthropic does not use API data for model training.
+                <strong>AI Analysis Service</strong> — Clinical analysis and note generation. Transcript text is
+                sent for AI processing. API data is not used for model training.
               </li>
               <li>
                 <strong>Supabase</strong> — Database hosting and authentication. All data at rest is encrypted.
@@ -93,14 +93,14 @@ export default function PrivacyPolicyPage() {
             <h3 className="text-lg font-medium text-gray-900 mt-4 mb-2">6.1 AI Technologies Used</h3>
             <ul className="list-disc pl-6 space-y-2 mt-2">
               <li>
-                <strong>Real-time speech-to-text transcription (Deepgram Nova Medical):</strong> Audio from consultations
-                is streamed in real-time to Deepgram&apos;s servers for transcription. Audio is processed transiently
-                and is not retained by Deepgram after processing.
+                <strong>Real-time speech-to-text transcription:</strong> Audio from consultations
+                is streamed in real-time to secure servers for transcription. Audio is processed transiently
+                and is not retained after processing.
               </li>
               <li>
-                <strong>Clinical analysis and note generation (Anthropic Claude):</strong> Transcript text is sent to
-                Anthropic&apos;s Claude AI for diagnostic suggestions, clinical summaries, drug interaction checks, and
-                clinical note generation. Anthropic does not use API data for model training.
+                <strong>Clinical analysis and note generation:</strong> Transcript text is sent to
+                an AI service for diagnostic suggestions, clinical summaries, drug interaction checks, and
+                clinical note generation. API data is not used for model training.
               </li>
             </ul>
             <h3 className="text-lg font-medium text-gray-900 mt-4 mb-2">6.2 Limitations of AI</h3>
