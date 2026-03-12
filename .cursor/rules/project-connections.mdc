@@ -1,0 +1,19 @@
+---
+description: At session start, verify GitHub, Vercel, and Supabase are connected for this project
+alwaysApply: true
+---
+
+# Project connections (start of session)
+
+For **this workspace** (MedScribe-app / medscribe-ai-main), at the **start of a new session** or when the user asks about deployment/setup:
+
+1. **Remember and verify** the canonical settings:
+   - **GitHub:** repo `dip2017/MedScribe-app`; app lives in `MedScribe/medscribe-ai-main`.
+   - **Vercel:** project `medscribe-app`; production URL `https://medscribe-app-dip2017s-projects.vercel.app`; root directory `MedScribe/medscribe-ai-main`.
+   - **Supabase:** project ref `oltonmgkzmfcmdbmyyuq`; API URL `https://oltonmgkzmfcmdbmyyuq.supabase.co`.
+
+2. **Source of truth:** See `docs/PROJECT-CONNECTIONS.md` in the repo for full values, clone/link commands, and a start-of-session checklist.
+
+3. **If the user says "connect" or "new project" or "start of session":** Run the checklist from that doc (e.g. `git remote -v`, `vercel project inspect medscribe-app`, `supabase projects list` from the app folder) and fix or reconnect as needed.
+
+4. **When pushing or deploying:** Use repo root for `git push`; Vercel deploys from `main` automatically; Supabase is linked from `MedScribe/medscribe-ai-main` for migrations.
