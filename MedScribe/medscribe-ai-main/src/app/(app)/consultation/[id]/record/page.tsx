@@ -90,6 +90,7 @@ export default function ConsultationRecordPage() {
     streamingActive,
     streamingStatus,
     remoteVideoStream,
+    localVideoStream,
     startRecording,
     stopRecording,
     pauseRecording,
@@ -553,107 +554,143 @@ export default function ConsultationRecordPage() {
         </div>
       )}
 
-      {/* PHASE 2: RECORDING — Side-by-side layout */}
+      {/* PHASE 2: RECORDING */}
       {phase === "recording" && (
-        <div className="space-y-4 py-4">
-          {/* Recording Header */}
-          <div className="flex items-center justify-between rounded-lg bg-gray-50 p-3">
-            <div className="flex items-center gap-3">
-              <span className="inline-flex h-3 w-3 animate-pulse rounded-full bg-medical-recording" />
-              <span className="text-lg font-semibold text-medical-recording">{t("record.recording")}</span>
-              <span className="text-lg font-mono text-medical-text">{formatDuration(duration)}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${isMultichannel ? "bg-purple-100 text-purple-700" : "bg-gray-100 text-gray-600"}`}>
-                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z" />
-                </svg>
-                {isMultichannel ? t("record.stereoCapture") : t("record.singleMicDiarization")}
-              </div>
-              <div className={`flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium ${streamingActive ? "bg-purple-100 text-purple-700" : "bg-green-100 text-green-700"}`}>
-                <div className={`h-2 w-2 rounded-full ${streamingActive ? "bg-purple-500 animate-pulse" : "bg-green-500"}`} />
-                {streamingActive ? t("record.streamingLive") : t("record.connected")}
-              </div>
-            </div>
-          </div>
-
-          {/* Show errors only — hide internal streaming debug status */}
+        <div className="space-y-3 py-2">
+          {/* Error banner */}
           {streamingStatus && (streamingStatus.includes("error") || streamingStatus.includes("failed")) && (
             <div className="rounded-lg px-3 py-1.5 text-xs bg-red-50 text-red-700 border border-red-200">
               Transcription issue: {streamingStatus}
             </div>
           )}
 
-          <AudioVisualizer audioLevel={audioLevel} isRecording={isRecording} isPaused={isPaused} duration={duration} />
+          {/* ===== REMOTE MODE: Video call on top, transcript + AI below ===== */}
+          {consultationMode === "remote" ? (
+            <>
+              {/* Video call panel — replaces audio visualizer */}
+              <GoogleMeetEmbed
+                localStream={localVideoStream}
+                remoteStream={remoteVideoStream}
+                isMultichannel={isMultichannel}
+                duration={formatDuration(duration)}
+                streamingActive={streamingActive}
+              />
 
-          {/* Remote mode: show inline video if tab was shared */}
-          {consultationMode === "remote" && remoteVideoStream && (
-            <GoogleMeetEmbed
-              videoStream={remoteVideoStream}
-              isMultichannel={isMultichannel}
-            />
+              {/* Transcript + AI side by side below video */}
+              <div className="grid gap-3 lg:grid-cols-5">
+                {/* LEFT: Live Transcript (3/5 width) */}
+                <div className="lg:col-span-3 space-y-3">
+                  <Card>
+                    <CardContent className="pt-3 pb-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="text-xs font-semibold uppercase text-medical-muted">{t("record.liveConversation")}</h3>
+                        <div className="flex items-center gap-2">
+                          <span className="flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-600">
+                            <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />{t("record.doctor")}
+                          </span>
+                          <span className="flex items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-medium text-green-600">
+                            <span className="h-1.5 w-1.5 rounded-full bg-green-500" />{t("record.patientSpeaker")}
+                          </span>
+                        </div>
+                      </div>
+                      {renderTranscriptBubbles(transcript, "max-h-[400px]")}
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardContent className="pt-3 pb-3">
+                      <h3 className="mb-1.5 text-xs font-semibold uppercase text-medical-muted">{t("record.sessionNotes")}</h3>
+                      <textarea
+                        value={sessionNotes}
+                        onChange={(e) => setSessionNotes(e.target.value)}
+                        placeholder={t("record.sessionNotesPlaceholder")}
+                        className="w-full min-h-[60px] rounded-lg border border-medical-border bg-white px-3 py-2 text-sm text-medical-text placeholder-medical-muted focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 resize-y"
+                      />
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* RIGHT: AI Copilot (2/5 width, sticky) */}
+                <div className="lg:col-span-2 lg:sticky lg:top-4 lg:self-start lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto space-y-3">
+                  <ProblemTracker isRecording={isRecording} duration={duration} onProblemsChange={handleProblemsChange} />
+                  <AIAssistantPanel transcript={transcript} isRecording={isRecording} visitType={consultationData?.visit_type} patientName={patientName} />
+                  <ClinicalDecisionSupport
+                    consultationId={consultationId}
+                    patientId={consultationData?.patient_id ?? undefined}
+                    transcript={transcript.filter((t) => t.isFinal).map((t) => (t.speaker === 0 ? "Doctor" : "Patient") + ": " + t.text).join("\n")}
+                    medications={[]}
+                  />
+                  <CriteriaTracker transcript={transcript.filter((t) => t.isFinal).map((t) => t.text).join(" ")} />
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* ===== IN-PERSON MODE: Audio visualizer + standard layout ===== */}
+              <div className="flex items-center justify-between rounded-lg bg-gray-50 p-3">
+                <div className="flex items-center gap-3">
+                  <span className="inline-flex h-3 w-3 animate-pulse rounded-full bg-medical-recording" />
+                  <span className="text-lg font-semibold text-medical-recording">{t("record.recording")}</span>
+                  <span className="text-lg font-mono text-medical-text">{formatDuration(duration)}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${streamingActive ? "bg-purple-100 text-purple-700" : "bg-green-100 text-green-700"}`}>
+                    <div className={`h-2 w-2 rounded-full ${streamingActive ? "bg-purple-500 animate-pulse" : "bg-green-500"}`} />
+                    {streamingActive ? t("record.streamingLive") : t("record.connected")}
+                  </div>
+                </div>
+              </div>
+
+              <AudioVisualizer audioLevel={audioLevel} isRecording={isRecording} isPaused={isPaused} duration={duration} />
+
+              <div className="grid gap-4 lg:grid-cols-5">
+                <div className="lg:col-span-3 space-y-4">
+                  <Card>
+                    <CardContent className="pt-4 pb-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-sm font-semibold uppercase text-medical-muted">{t("record.liveConversation")}</h3>
+                        <div className="flex items-center gap-2">
+                          <span className="flex items-center gap-1.5 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-600">
+                            <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />{t("record.doctor")}
+                          </span>
+                          <span className="flex items-center gap-1.5 rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-medium text-green-600">
+                            <span className="h-1.5 w-1.5 rounded-full bg-green-500" />{t("record.patientSpeaker")}
+                          </span>
+                        </div>
+                      </div>
+                      {renderTranscriptBubbles(transcript)}
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardContent className="pt-4 pb-4">
+                      <h3 className="mb-2 text-xs font-semibold uppercase text-medical-muted">{t("record.sessionNotes")}</h3>
+                      <textarea
+                        value={sessionNotes}
+                        onChange={(e) => setSessionNotes(e.target.value)}
+                        placeholder={t("record.sessionNotesPlaceholder")}
+                        className="w-full min-h-[80px] rounded-lg border border-medical-border bg-white px-3 py-2 text-sm text-medical-text placeholder-medical-muted focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 resize-y"
+                      />
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <div className="lg:col-span-2 lg:sticky lg:top-24 lg:self-start lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto space-y-4">
+                  <ProblemTracker isRecording={isRecording} duration={duration} onProblemsChange={handleProblemsChange} />
+                  <AIAssistantPanel transcript={transcript} isRecording={isRecording} visitType={consultationData?.visit_type} patientName={patientName} />
+                  <ClinicalDecisionSupport
+                    consultationId={consultationId}
+                    patientId={consultationData?.patient_id ?? undefined}
+                    transcript={transcript.filter((t) => t.isFinal).map((t) => (t.speaker === 0 ? "Doctor" : "Patient") + ": " + t.text).join("\n")}
+                    medications={[]}
+                  />
+                  <CriteriaTracker transcript={transcript.filter((t) => t.isFinal).map((t) => t.text).join(" ")} />
+                </div>
+              </div>
+            </>
           )}
 
-          <div className="grid gap-4 lg:grid-cols-5">
-            {/* LEFT: Live Transcript (3/5 width) */}
-            <div className="lg:col-span-3 space-y-4">
-              <Card>
-                <CardContent className="pt-4 pb-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-sm font-semibold uppercase text-medical-muted">{t("record.liveConversation")}</h3>
-                    <div className="flex items-center gap-2">
-                      <span className="flex items-center gap-1.5 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-600">
-                        <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />{t("record.doctor")}
-                      </span>
-                      <span className="flex items-center gap-1.5 rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-medium text-green-600">
-                        <span className="h-1.5 w-1.5 rounded-full bg-green-500" />{t("record.patientSpeaker")}
-                      </span>
-                    </div>
-                  </div>
-                  {renderTranscriptBubbles(transcript)}
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="pt-4 pb-4">
-                  <h3 className="mb-2 text-xs font-semibold uppercase text-medical-muted">{t("record.sessionNotes")}</h3>
-                  <textarea
-                    value={sessionNotes}
-                    onChange={(e) => setSessionNotes(e.target.value)}
-                    placeholder={t("record.sessionNotesPlaceholder")}
-                    className="w-full min-h-[80px] rounded-lg border border-medical-border bg-white px-3 py-2 text-sm text-medical-text placeholder-medical-muted focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 resize-y"
-                  />
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* RIGHT: AI Intelligence Panel (2/5 width, sticky) */}
-            <div className="lg:col-span-2 lg:sticky lg:top-24 lg:self-start lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto space-y-4">
-              {/* Stage 3: Problem Tracker */}
-              <ProblemTracker
-                isRecording={isRecording}
-                duration={duration}
-                onProblemsChange={handleProblemsChange}
-              />
-              <AIAssistantPanel
-                transcript={transcript}
-                isRecording={isRecording}
-                visitType={consultationData?.visit_type}
-                patientName={patientName}
-              />
-              <ClinicalDecisionSupport
-                consultationId={consultationId}
-                patientId={consultationData?.patient_id ?? undefined}
-                transcript={transcript.filter((t) => t.isFinal).map((t) => (t.speaker === 0 ? "Doctor" : "Patient") + ": " + t.text).join("\n")}
-                medications={[]}
-              />
-              <CriteriaTracker
-                transcript={transcript.filter((t) => t.isFinal).map((t) => t.text).join(" ")}
-              />
-            </div>
-          </div>
-
-          {/* Controls */}
+          {/* Controls — shared by both modes */}
           <div className="flex gap-3">
             <Button onClick={isPaused ? resumeRecording : pauseRecording} variant="outline" size="md" className="flex-1">
               {isPaused ? t("record.resume") : t("record.pause")}

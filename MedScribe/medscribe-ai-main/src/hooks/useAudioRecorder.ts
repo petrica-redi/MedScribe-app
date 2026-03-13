@@ -28,6 +28,7 @@ interface UseAudioRecorderReturn {
   streamingActive: boolean;
   streamingStatus: string;
   remoteVideoStream: MediaStream | null;
+  localVideoStream: MediaStream | null;
   startRecording: () => Promise<void>;
   stopRecording: () => Promise<void>;
   pauseRecording: () => void;
@@ -55,6 +56,7 @@ export function useAudioRecorder({
   const [streamingActive, setStreamingActive] = useState(false);
   const [streamingStatus, setStreamingStatus] = useState("idle");
   const [remoteVideoStream, setRemoteVideoStream] = useState<MediaStream | null>(null);
+  const [localVideoStream, setLocalVideoStream] = useState<MediaStream | null>(null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -198,6 +200,7 @@ export function useAudioRecorder({
       tabStreamRef.current = null;
     }
     setRemoteVideoStream(null);
+    setLocalVideoStream(null);
 
     if (wsRef.current) {
       try {
@@ -274,16 +277,23 @@ export function useAudioRecorder({
     }, []);
 
   const startRemoteRecording = useCallback(async (): Promise<MediaStream> => {
-    // Enable echo cancellation in remote mode so the mic works alongside
-    // video call apps (Google Meet / Zoom) that also hold the microphone.
+    // Capture doctor's webcam video + mic audio in a single getUserMedia call.
+    // Echo cancellation is enabled so the mic works alongside video call apps.
     const micStream = await navigator.mediaDevices.getUserMedia({
       audio: {
         echoCancellation: true,
         noiseSuppression: true,
         autoGainControl: true,
       },
+      video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" },
     });
     micStreamRef.current = micStream;
+
+    // Extract the doctor's webcam video for the UI
+    const localVideoTracks = micStream.getVideoTracks();
+    if (localVideoTracks.length > 0) {
+      setLocalVideoStream(new MediaStream(localVideoTracks));
+    }
 
     if (!navigator.mediaDevices.getDisplayMedia) {
       isMultichannelRef.current = false;
@@ -800,6 +810,7 @@ export function useAudioRecorder({
     streamingActive,
     streamingStatus,
     remoteVideoStream,
+    localVideoStream,
     startRecording,
     stopRecording,
     pauseRecording,
