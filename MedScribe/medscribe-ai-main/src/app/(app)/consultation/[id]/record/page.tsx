@@ -89,8 +89,6 @@ export default function ConsultationRecordPage() {
     isMultichannel,
     streamingActive,
     streamingStatus,
-    remoteVideoStream,
-    localVideoStream,
     startRecording,
     stopRecording,
     pauseRecording,
@@ -497,43 +495,14 @@ export default function ConsultationRecordPage() {
             </CardContent>
           </Card>
 
-          {/* Remote mode: connect with patient first */}
-          {consultationMode === "remote" && (
-            <Card className="w-full max-w-md border-blue-200 bg-blue-50/30">
-              <CardContent className="pt-5 pb-4 space-y-3">
-                <div className="flex items-center gap-2">
-                  <svg className="h-5 w-5 text-blue-600" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M14.5 8.5v7l4.5 2.5V6l-4.5 2.5zM2 6.5v11c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2v-11c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2z" />
-                  </svg>
-                  <p className="text-sm font-semibold text-blue-900">Connect with your patient</p>
-                </div>
-                <p className="text-xs text-blue-700">Start or join a video call, then click the record button below. You will be asked to share the meeting tab so the patient&apos;s video and audio appear here.</p>
-                <div className="flex gap-2">
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => window.open("https://meet.google.com/new", "_blank")}
-                  >
-                    New meeting
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => {
-                      const link = prompt("Paste meeting link:");
-                      if (link?.trim()) {
-                        const url = link.trim().startsWith("http") ? link.trim() : `https://${link.trim()}`;
-                        window.open(url, "_blank");
-                      }
-                    }}
-                  >
-                    Join existing
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+          {/* Remote mode: Embedded video call — join with patient before recording */}
+          {consultationMode === "remote" && consultationId && (
+            <div className="w-full max-w-3xl">
+              <p className="text-xs text-medical-muted mb-2 text-center">
+                Join the video call below with your patient. When ready, start recording to capture the transcript.
+              </p>
+              <GoogleMeetEmbed consultationId={consultationId} />
+            </div>
           )}
 
           {/* Stage 2: Identity & Tech Verification (telemedicine only) */}
@@ -603,21 +572,35 @@ export default function ConsultationRecordPage() {
             </div>
           )}
 
-          {/* ===== REMOTE MODE: Video call on top, transcript + AI below ===== */}
+          {/* ===== REMOTE MODE: Floating Meet panel + full-width transcript + AI ===== */}
           {consultationMode === "remote" ? (
             <>
-              {/* Video call panel — replaces audio visualizer */}
+              {/* Draggable floating Google Meet control panel */}
               <GoogleMeetEmbed
-                localStream={localVideoStream}
-                remoteStream={remoteVideoStream}
-                isMultichannel={isMultichannel}
+                consultationId={consultationId!}
+                floating
+                isRecording={isRecording}
                 duration={formatDuration(duration)}
                 streamingActive={streamingActive}
               />
 
-              {/* Transcript + AI side by side below video */}
+              {/* Recording status bar */}
+              <div className="flex items-center justify-between rounded-lg bg-gray-50 p-3">
+                <div className="flex items-center gap-3">
+                  <span className="inline-flex h-3 w-3 animate-pulse rounded-full bg-medical-recording" />
+                  <span className="text-lg font-semibold text-medical-recording">{t("record.recording")}</span>
+                  <span className="text-lg font-mono text-medical-text">{formatDuration(duration)}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${streamingActive ? "bg-purple-100 text-purple-700" : "bg-green-100 text-green-700"}`}>
+                    <div className={`h-2 w-2 rounded-full ${streamingActive ? "bg-purple-500 animate-pulse" : "bg-green-500"}`} />
+                    {streamingActive ? t("record.streamingLive") : t("record.connected")}
+                  </div>
+                </div>
+              </div>
+
+              {/* Transcript + AI side by side */}
               <div className="grid gap-3 lg:grid-cols-5">
-                {/* LEFT: Live Transcript (3/5 width) */}
                 <div className="lg:col-span-3 space-y-3">
                   <Card>
                     <CardContent className="pt-3 pb-3">
@@ -632,7 +615,7 @@ export default function ConsultationRecordPage() {
                           </span>
                         </div>
                       </div>
-                      {renderTranscriptBubbles(transcript, "max-h-[400px]")}
+                      {renderTranscriptBubbles(transcript, "max-h-[500px]")}
                     </CardContent>
                   </Card>
 
@@ -649,7 +632,6 @@ export default function ConsultationRecordPage() {
                   </Card>
                 </div>
 
-                {/* RIGHT: AI Copilot (2/5 width, sticky) */}
                 <div className="lg:col-span-2 lg:sticky lg:top-4 lg:self-start lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto space-y-3">
                   <ProblemTracker isRecording={isRecording} duration={duration} onProblemsChange={handleProblemsChange} />
                   <AIAssistantPanel transcript={transcript} isRecording={isRecording} visitType={consultationData?.visit_type} patientName={patientName} />
