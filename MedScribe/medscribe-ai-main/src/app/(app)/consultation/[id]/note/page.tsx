@@ -27,6 +27,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/badge";
 import { formatDuration, getStatusColor, cn } from "@/lib/utils";
 import { ReferralModal } from "@/components/referral/ReferralModal";
+import { QualityCheck, type QualityResult } from "@/components/consultation/QualityCheck";
 import type {
   ClinicalNote,
   Transcript,
@@ -63,6 +64,7 @@ export default function NoteEditorPage() {
   const [status, setStatus] = useState<NoteStatus>("draft");
   const [billingCodes, setBillingCodes] = useState<BillingCode[]>([]);
   const [referralOpen, setReferralOpen] = useState(false);
+  const [qualityCheckPassed, setQualityCheckPassed] = useState(false);
 
   // Track content changes for debounced save
   const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -235,6 +237,30 @@ export default function NoteEditorPage() {
       }, 2000);
     },
     [pageState.note, sections, status, supabase]
+  );
+
+  const handleQualityCheckComplete = useCallback(
+    async (results: QualityResult[]) => {
+      const hasErrors = results.some((r) => r.severity === "error");
+      setQualityCheckPassed(!hasErrors);
+      if (pageState.patientId && id) {
+        await supabase
+          .from("consultations")
+          .update({
+            metadata: {
+              quality_check_passed: !hasErrors,
+              quality_check_results: results.map((r) => ({
+                id: r.id,
+                severity: r.severity,
+                title: r.title,
+              })),
+              quality_check_at: new Date().toISOString(),
+            },
+          })
+          .eq("id", id);
+      }
+    },
+    [id, pageState.patientId, supabase]
   );
 
   // Handle status transitions
@@ -685,6 +711,14 @@ export default function NoteEditorPage() {
               <span className="inline-flex items-center rounded-lg bg-green-50 px-3 py-2 text-xs font-medium text-green-700">
                 Read-only
               </span>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => router.push(`/consultation/${id}/discharge`)}
+                title="Proceed to patient discharge"
+              >
+                Patient Discharge
+              </Button>
               {pageState.patientId && (
                 <Button
                   variant="outline"
@@ -1012,6 +1046,34 @@ export default function NoteEditorPage() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Stage 4: Quality Check before finalization */}
+            {!isFinalized && (
+              <QualityCheck
+                sections={sections}
+                billingCodes={billingCodes}
+                onCheckComplete={handleQualityCheckComplete}
+              />
+            )}
+
+            {/* Discharge CTA after finalization */}
+            {isFinalized && (
+              <Card className="border-emerald-200 bg-emerald-50/30">
+                <CardContent className="flex items-center justify-between py-4">
+                  <div>
+                    <p className="text-sm font-medium text-emerald-800">Note finalized — ready for discharge</p>
+                    <p className="text-xs text-emerald-600">Generate patient summary, education materials, and schedule follow-up</p>
+                  </div>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => router.push(`/consultation/${id}/discharge`)}
+                  >
+                    Start Discharge
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </div>

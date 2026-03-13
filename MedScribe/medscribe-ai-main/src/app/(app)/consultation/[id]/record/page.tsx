@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAudioRecorder } from "@/hooks/useAudioRecorder";
@@ -14,6 +14,9 @@ import { AIAssistantPanel } from "@/components/consultation/AIAssistantPanel";
 import { GoogleMeetEmbed } from "@/components/consultation/GoogleMeetEmbed";
 import { ClinicalDecisionSupport, CriteriaTracker } from "@/components/features";
 import { NetworkStatusBanner } from "@/components/ui/NetworkStatusBanner";
+import { PreVisitBrief } from "@/components/features/PreVisitBrief";
+import { IdentityVerification, type VerificationData } from "@/components/consultation/IdentityVerification";
+import { ProblemTracker, type TrackedProblem } from "@/components/consultation/ProblemTracker";
 import type { ConsultationMode, ConsultationWithRelations, LiveTranscriptItem } from "@/types";
 
 type RecordingPhase = "pre" | "recording" | "post";
@@ -67,6 +70,8 @@ export default function ConsultationRecordPage() {
   const [sessionNotes, setSessionNotes] = useState("");
   const [restoredTranscript, setRestoredTranscript] = useState<LiveTranscriptItem[]>([]);
   const [savedDuration, setSavedDuration] = useState(0);
+  const [identityVerified, setIdentityVerified] = useState(false);
+  const [trackedProblems, setTrackedProblems] = useState<TrackedProblem[]>([]);
 
   const patientName: string | undefined =
     typeof consultationData?.metadata?.patient_name === "string"
@@ -178,6 +183,28 @@ export default function ConsultationRecordPage() {
   const displayTranscript = transcript.length > 0 ? transcript : restoredTranscript;
   const displayDuration = duration > 0 ? duration : savedDuration;
 
+  const handleIdentityVerified = useCallback(async (data: VerificationData) => {
+    setIdentityVerified(true);
+    await supabase
+      .from("consultations")
+      .update({
+        metadata: {
+          ...consultationData?.metadata,
+          identity_verified: data.identity_verified,
+          identity_method: data.identity_method,
+          connection_quality_score: data.connection_quality_score,
+          visit_modality: data.visit_modality,
+          patient_location: data.patient_location,
+          identity_verified_at: data.verified_at,
+        },
+      })
+      .eq("id", consultationId);
+  }, [consultationId, consultationData, supabase]);
+
+  const handleProblemsChange = useCallback((problems: TrackedProblem[]) => {
+    setTrackedProblems(problems);
+  }, []);
+
   const handleStartRecording = async () => {
     setError("");
     try {
@@ -225,6 +252,16 @@ export default function ConsultationRecordPage() {
           updated_at: new Date().toISOString(),
         }, { onConflict: "consultation_id" });
 
+      const problemsSummary = trackedProblems.map((p) => ({
+        label: p.label,
+        icd10: p.icd10 || null,
+        totalSeconds: p.totalSeconds,
+      }));
+      const timePerProblem: Record<string, number> = {};
+      for (const p of trackedProblems) {
+        timePerProblem[p.label] = p.totalSeconds;
+      }
+
       await supabase
         .from("consultations")
         .update({
@@ -236,6 +273,8 @@ export default function ConsultationRecordPage() {
             transcript_segments_count: finalSegments.length,
             transcript_saved_at: new Date().toISOString(),
             session_notes: sessionNotes || null,
+            problems_addressed: problemsSummary,
+            time_per_problem: timePerProblem,
           },
         })
         .eq("id", consultationId);
@@ -395,6 +434,13 @@ export default function ConsultationRecordPage() {
             </Card>
           )}
 
+          {/* Stage 1: Pre-Visit Intelligence Brief */}
+          {consultationData?.patient_id && (
+            <div className="w-full max-w-2xl">
+              <PreVisitBrief patientId={consultationData.patient_id} />
+            </div>
+          )}
+
           <Card className="w-full max-w-md">
             <CardContent className="space-y-3 pt-6">
               <p className="text-sm font-medium text-medical-text">{t("record.consultationMode")}</p>
@@ -448,6 +494,24 @@ export default function ConsultationRecordPage() {
               </select>
             </CardContent>
           </Card>
+
+          {/* Stage 2: Identity & Tech Verification (telemedicine only) */}
+          {consultationMode === "remote" && !identityVerified && (
+            <IdentityVerification
+              patientName={patientName}
+              patientDOB={consultationData?.patient?.date_of_birth}
+              consultationId={consultationId}
+              onVerified={handleIdentityVerified}
+            />
+          )}
+          {consultationMode === "remote" && identityVerified && (
+            <div className="flex items-center gap-2 rounded-lg bg-green-50 border border-green-200 px-4 py-2 w-full max-w-md">
+              <svg className="h-4 w-4 text-green-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
+              </svg>
+              <span className="text-sm text-green-700 font-medium">Identity & tech check verified</span>
+            </div>
+          )}
 
           {/* AI Transparency Notice */}
           <Card className="w-full max-w-2xl border-indigo-200 bg-indigo-50/30">
@@ -635,6 +699,12 @@ export default function ConsultationRecordPage() {
 
             {/* RIGHT: AI Intelligence Panel (2/5 width, sticky) */}
             <div className="lg:col-span-2 lg:sticky lg:top-24 lg:self-start lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto space-y-4">
+              {/* Stage 3: Problem Tracker */}
+              <ProblemTracker
+                isRecording={isRecording}
+                duration={duration}
+                onProblemsChange={handleProblemsChange}
+              />
               <AIAssistantPanel
                 transcript={transcript}
                 isRecording={isRecording}
@@ -746,7 +816,7 @@ export default function ConsultationRecordPage() {
           )}
 
           {/* Quick Actions */}
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
             <Button
               variant="outline"
               size="md"
@@ -757,6 +827,17 @@ export default function ConsultationRecordPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
               </svg>
               {t("record.writePrescription")}
+            </Button>
+            <Button
+              variant="outline"
+              size="md"
+              onClick={() => router.push(`/consultation/${consultationId}/discharge`)}
+              className="flex items-center gap-2"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25Z" />
+              </svg>
+              Patient Discharge
             </Button>
             <Button
               variant="ghost"
