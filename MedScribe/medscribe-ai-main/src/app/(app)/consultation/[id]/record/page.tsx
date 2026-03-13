@@ -497,6 +497,45 @@ export default function ConsultationRecordPage() {
             </CardContent>
           </Card>
 
+          {/* Remote mode: connect with patient first */}
+          {consultationMode === "remote" && (
+            <Card className="w-full max-w-md border-blue-200 bg-blue-50/30">
+              <CardContent className="pt-5 pb-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <svg className="h-5 w-5 text-blue-600" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M14.5 8.5v7l4.5 2.5V6l-4.5 2.5zM2 6.5v11c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2v-11c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2z" />
+                  </svg>
+                  <p className="text-sm font-semibold text-blue-900">Connect with your patient</p>
+                </div>
+                <p className="text-xs text-blue-700">Start or join a video call, then click the record button below. You will be asked to share the meeting tab so the patient&apos;s video and audio appear here.</p>
+                <div className="flex gap-2">
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => window.open("https://meet.google.com/new", "_blank")}
+                  >
+                    New meeting
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => {
+                      const link = prompt("Paste meeting link:");
+                      if (link?.trim()) {
+                        const url = link.trim().startsWith("http") ? link.trim() : `https://${link.trim()}`;
+                        window.open(url, "_blank");
+                      }
+                    }}
+                  >
+                    Join existing
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Stage 2: Identity & Tech Verification (telemedicine only) */}
           {consultationMode === "remote" && !identityVerified && (
             <IdentityVerification

@@ -58,14 +58,18 @@ export function GoogleMeetEmbed({
             className="absolute inset-0 w-full h-full object-contain bg-gray-900"
           />
         ) : (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-gradient-to-br from-gray-800 to-gray-900">
-            <div className="h-16 w-16 rounded-full bg-gray-700 flex items-center justify-center">
-              <svg className="h-8 w-8 text-gray-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-gradient-to-br from-gray-800 to-gray-900 px-6">
+            <div className="h-16 w-16 rounded-full bg-gray-700/80 flex items-center justify-center">
+              <svg className="h-8 w-8 text-gray-400" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M14.5 8.5v7l4.5 2.5V6l-4.5 2.5zM2 6.5v11c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2v-11c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2z" />
               </svg>
             </div>
-            <p className="text-sm text-gray-400">Patient video</p>
-            <p className="text-xs text-gray-500">Share your meeting tab to see the patient here</p>
+            <div className="text-center space-y-1">
+              <p className="text-sm font-medium text-gray-300">Waiting for patient video</p>
+              <p className="text-xs text-gray-500 max-w-xs">
+                To see your patient here, stop the recording, then restart it and select your Google Meet tab when the browser asks what to share. Check &quot;Also share tab audio&quot;.
+              </p>
+            </div>
           </div>
         )}
 
