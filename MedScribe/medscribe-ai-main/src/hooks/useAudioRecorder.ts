@@ -27,6 +27,7 @@ interface UseAudioRecorderReturn {
   isMultichannel: boolean;
   streamingActive: boolean;
   streamingStatus: string;
+  remoteVideoStream: MediaStream | null;
   startRecording: () => Promise<void>;
   stopRecording: () => Promise<void>;
   pauseRecording: () => void;
@@ -53,6 +54,7 @@ export function useAudioRecorder({
   const [isMultichannel, setIsMultichannel] = useState(false);
   const [streamingActive, setStreamingActive] = useState(false);
   const [streamingStatus, setStreamingStatus] = useState("idle");
+  const [remoteVideoStream, setRemoteVideoStream] = useState<MediaStream | null>(null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -195,6 +197,7 @@ export function useAudioRecorder({
       tabStreamRef.current.getTracks().forEach((track) => track.stop());
       tabStreamRef.current = null;
     }
+    setRemoteVideoStream(null);
     if (wsRef.current) {
       try {
         if (wsRef.current.readyState === WebSocket.OPEN) {
@@ -270,20 +273,118 @@ export function useAudioRecorder({
     }, []);
 
   const startRemoteRecording = useCallback(async (): Promise<MediaStream> => {
-    // Mic-only capture for transcription. Jitsi handles the video call.
-    // echoCancellation OFF so the mic picks up the patient's voice from
-    // speakers — Deepgram diarization separates the speakers.
+    // Channel 0 = Doctor's microphone (echoCancellation ON for clean voice)
+    // Channel 1 = Patient's audio captured from the Google Meet browser tab
     const micStream = await navigator.mediaDevices.getUserMedia({
       audio: {
-        echoCancellation: false,
-        noiseSuppression: false,
+        echoCancellation: true,
+        noiseSuppression: true,
         autoGainControl: true,
       },
     });
     micStreamRef.current = micStream;
-    isMultichannelRef.current = false;
-    setIsMultichannel(false);
-    return micStream;
+
+    if (!navigator.mediaDevices.getDisplayMedia) {
+      isMultichannelRef.current = false;
+      setIsMultichannel(false);
+      return micStream;
+    }
+
+    let tabStream: MediaStream | null = null;
+    try {
+      tabStream = await navigator.mediaDevices.getDisplayMedia({
+        audio: true,
+        video: true,
+      });
+    } catch {
+      // User cancelled tab sharing — fall back to mic-only with diarization
+      isMultichannelRef.current = false;
+      setIsMultichannel(false);
+      return micStream;
+    }
+
+    // Show the shared tab's video (Google Meet) in the consultation UI
+    const videoTracks = tabStream.getVideoTracks();
+    if (videoTracks.length > 0) {
+      setRemoteVideoStream(new MediaStream(videoTracks));
+    }
+
+    const tabAudioTracks = tabStream.getAudioTracks();
+    if (tabAudioTracks.length === 0) {
+      // Tab shared without audio — clean up video-only tab stream
+      tabStream.getTracks().forEach((t) => t.stop());
+      isMultichannelRef.current = false;
+      setIsMultichannel(false);
+      return micStream;
+    }
+
+    tabStreamRef.current = tabStream;
+
+    const audioCtx = new AudioContext();
+    audioContextRef.current = audioCtx;
+
+    const micSource = audioCtx.createMediaStreamSource(micStream);
+    const tabSource = audioCtx.createMediaStreamSource(
+      new MediaStream(tabAudioTracks)
+    );
+
+    const merger = audioCtx.createChannelMerger(2);
+    micSource.connect(merger, 0, 0);
+    tabSource.connect(merger, 0, 1);
+
+    const dest = audioCtx.createMediaStreamDestination();
+    merger.connect(dest);
+
+    // Use AudioWorkletNode for interleaved Int16 PCM → Deepgram multichannel
+    try {
+      await audioCtx.audioWorklet.addModule("/audio-interleaver.js");
+      const workletNode = new AudioWorkletNode(audioCtx, "interleaver-processor", {
+        numberOfInputs: 1,
+        numberOfOutputs: 0,
+        channelCount: 2,
+        channelCountMode: "explicit",
+        channelInterpretation: "discrete",
+      });
+
+      workletNode.port.onmessage = (event) => {
+        if (!streamingRef.current || wsRef.current?.readyState !== WebSocket.OPEN) return;
+        wsRef.current.send(event.data);
+      };
+
+      merger.connect(workletNode);
+      workletNodeRef.current = workletNode;
+    } catch {
+      // AudioWorklet unavailable — fallback to ScriptProcessorNode
+      const scriptProcessor = audioCtx.createScriptProcessor(4096, 2, 2);
+      merger.connect(scriptProcessor);
+      const silentGain = audioCtx.createGain();
+      silentGain.gain.value = 0;
+      scriptProcessor.connect(silentGain);
+      silentGain.connect(audioCtx.destination);
+
+      scriptProcessor.onaudioprocess = (event) => {
+        if (!streamingRef.current || wsRef.current?.readyState !== WebSocket.OPEN) return;
+        const ch0 = event.inputBuffer.getChannelData(0);
+        const ch1 = event.inputBuffer.getChannelData(1);
+        const length = ch0.length;
+        const interleaved = new Int16Array(length * 2);
+        for (let i = 0; i < length; i++) {
+          interleaved[i * 2] = Math.max(-32768, Math.min(32767, Math.round(ch0[i] * 32767)));
+          interleaved[i * 2 + 1] = Math.max(-32768, Math.min(32767, Math.round(ch1[i] * 32767)));
+        }
+        wsRef.current!.send(interleaved.buffer);
+      };
+      workletNodeRef.current = scriptProcessor as unknown as AudioWorkletNode;
+    }
+
+    const analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 256;
+    micSource.connect(analyser);
+    analyserRef.current = analyser;
+
+    isMultichannelRef.current = true;
+    setIsMultichannel(true);
+    return dest.stream;
   }, []);
 
   const startRecording = useCallback(async () => {
@@ -697,6 +798,7 @@ export function useAudioRecorder({
     isMultichannel,
     streamingActive,
     streamingStatus,
+    remoteVideoStream,
     startRecording,
     stopRecording,
     pauseRecording,

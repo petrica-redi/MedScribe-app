@@ -4,11 +4,14 @@ import { useState, useRef, useCallback, useEffect } from "react";
 
 interface GoogleMeetEmbedProps {
   consultationId: string;
-  /** When true the panel is rendered as a compact floating overlay (recording phase). */
+  /** When true, shows compact draggable overlay instead of the inline launcher. */
   floating?: boolean;
   isRecording?: boolean;
   duration?: string;
   streamingActive?: boolean;
+  isMultichannel?: boolean;
+  /** The captured tab video stream (Google Meet tab shared via getDisplayMedia). */
+  remoteStream?: MediaStream | null;
 }
 
 const POPUP_W = 700;
@@ -20,16 +23,33 @@ export function GoogleMeetEmbed({
   isRecording = false,
   duration,
   streamingActive,
+  isMultichannel,
+  remoteStream,
 }: GoogleMeetEmbedProps) {
   const [meetUrl, setMeetUrl] = useState("");
   const [popupAlive, setPopupAlive] = useState(false);
   const popupRef = useRef<Window | null>(null);
+  const remoteVideoRef = useRef<HTMLVideoElement>(null);
 
   // ---------- Draggable state (floating mode only) ----------
   const panelRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
   const dragOrigin = useRef({ mx: 0, my: 0, px: 0, py: 0 });
   const [dragging, setDragging] = useState(false);
+
+  // Attach remote stream to video element
+  useEffect(() => {
+    const el = remoteVideoRef.current;
+    if (el && remoteStream) {
+      el.srcObject = remoteStream;
+      el.play().catch(() => {});
+    }
+    return () => {
+      if (el) el.srcObject = null;
+    };
+  }, [remoteStream]);
+
+  const hasRemoteVideo = remoteStream && remoteStream.getVideoTracks().length > 0;
 
   // Poll popup status
   useEffect(() => {
@@ -105,9 +125,76 @@ export function GoogleMeetEmbed({
   }, [dragging]);
 
   // =====================================================================
-  // FLOATING MODE — compact draggable overlay during recording
+  // FLOATING MODE — during recording: shows live Google Meet tab capture
+  // or compact bar if no tab video
   // =====================================================================
   if (floating) {
+    // If we have the captured tab video, show it as a resizable floating panel
+    if (hasRemoteVideo) {
+      const style: React.CSSProperties = pos
+        ? { position: "fixed", left: pos.x, top: pos.y, zIndex: 50 }
+        : { position: "fixed", top: 12, right: 12, zIndex: 50 };
+
+      return (
+        <div ref={panelRef} style={style} className="select-none">
+          <div className="rounded-xl overflow-hidden shadow-2xl border border-gray-700 bg-gray-900">
+            {/* Drag handle bar */}
+            <div
+              onMouseDown={onDragStart}
+              className="flex items-center justify-between px-3 py-1.5 bg-gray-800 cursor-grab active:cursor-grabbing"
+            >
+              <div className="flex items-center gap-2">
+                <svg className="h-3.5 w-3.5 text-gray-500" viewBox="0 0 24 24" fill="currentColor">
+                  <circle cx="9" cy="5" r="1.5" /><circle cx="15" cy="5" r="1.5" />
+                  <circle cx="9" cy="12" r="1.5" /><circle cx="15" cy="12" r="1.5" />
+                  <circle cx="9" cy="19" r="1.5" /><circle cx="15" cy="19" r="1.5" />
+                </svg>
+                <span className="text-[10px] font-medium text-gray-400">Google Meet — Patient view</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                {isRecording && (
+                  <div className="flex items-center gap-1 rounded-full bg-red-500/20 px-2 py-0.5">
+                    <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />
+                    <span className="text-[9px] font-semibold text-red-400">REC {duration}</span>
+                  </div>
+                )}
+                {isMultichannel && (
+                  <div className="rounded-full bg-purple-500/20 px-2 py-0.5">
+                    <span className="text-[9px] font-medium text-purple-400">Stereo</span>
+                  </div>
+                )}
+                {streamingActive && (
+                  <div className="flex items-center gap-1 rounded-full bg-green-500/20 px-2 py-0.5">
+                    <span className="h-1 w-1 rounded-full bg-green-400 animate-pulse" />
+                    <span className="text-[9px] font-medium text-green-400">Live</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Video feed */}
+            <div className="relative" style={{ width: 420, maxWidth: "90vw" }}>
+              <video
+                ref={remoteVideoRef}
+                autoPlay
+                playsInline
+                muted
+                className="w-full aspect-video object-contain bg-black"
+              />
+              <button
+                type="button"
+                onClick={focusPopup}
+                className="absolute bottom-2 right-2 rounded-md bg-black/50 hover:bg-black/70 text-white text-[10px] font-medium px-2 py-1 transition-colors backdrop-blur-sm"
+              >
+                Focus Meet
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // No tab video captured — compact status bar
     const style: React.CSSProperties = pos
       ? { position: "fixed", left: pos.x, top: pos.y, zIndex: 50 }
       : { position: "fixed", top: 12, right: 12, zIndex: 50 };
@@ -121,7 +208,6 @@ export function GoogleMeetEmbed({
               : "bg-white border-gray-200 text-gray-700"
           }`}
         >
-          {/* Drag handle */}
           <div onMouseDown={onDragStart} className="cursor-grab active:cursor-grabbing p-0.5 -ml-1" title="Drag to reposition">
             <svg className="h-4 w-4 text-gray-400" viewBox="0 0 24 24" fill="currentColor">
               <circle cx="9" cy="5" r="1.5" /><circle cx="15" cy="5" r="1.5" />
@@ -130,12 +216,10 @@ export function GoogleMeetEmbed({
             </svg>
           </div>
 
-          {/* Video icon */}
           <svg className="h-4 w-4 shrink-0 text-blue-400" viewBox="0 0 24 24" fill="currentColor">
             <path d="M14.5 8.5v7l4.5 2.5V6l-4.5 2.5zM2 6.5v11c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2v-11c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2z" />
           </svg>
 
-          {/* Status */}
           {popupAlive ? (
             <span className="text-xs font-medium text-green-400 flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse" />
@@ -145,7 +229,6 @@ export function GoogleMeetEmbed({
             <span className="text-xs text-gray-400">Meet not connected</span>
           )}
 
-          {/* Recording badge */}
           {isRecording && (
             <div className="flex items-center gap-1 rounded-full bg-red-500/20 px-2 py-0.5 ml-1">
               <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />
@@ -159,7 +242,6 @@ export function GoogleMeetEmbed({
             </div>
           )}
 
-          {/* Focus / Open button */}
           <button
             type="button"
             onClick={popupAlive ? focusPopup : handleNewMeeting}
@@ -177,11 +259,10 @@ export function GoogleMeetEmbed({
   }
 
   // =====================================================================
-  // INLINE MODE — full card for pre-recording setup
+  // INLINE MODE — pre-recording setup
   // =====================================================================
   return (
     <div className="w-full rounded-xl border border-blue-200 bg-gradient-to-b from-blue-50/60 to-white overflow-hidden shadow-sm">
-      {/* Video call placeholder area */}
       <div className="relative aspect-video bg-gradient-to-br from-gray-800 to-gray-900 flex flex-col items-center justify-center gap-5 px-6">
         {popupAlive ? (
           <>
@@ -196,9 +277,11 @@ export function GoogleMeetEmbed({
                 Google Meet is running
               </p>
               <p className="text-xs text-gray-400 max-w-sm">
-                Your meeting is open in a separate window. Position it next to MedScribe, or use Google Meet&apos;s
-                <strong className="text-gray-300"> Picture-in-Picture </strong>
-                button (&#8942; &rarr; PiP) to float the patient video on top of this page.
+                Your meeting is open in a separate window. When you click
+                <strong className="text-gray-300"> Start Recording</strong>, the browser will ask you to
+                share the Google Meet tab — select it and check
+                <strong className="text-gray-300"> &quot;Also share tab audio&quot;</strong> so
+                the patient&apos;s voice is captured on a separate channel.
               </p>
             </div>
             <button
@@ -219,7 +302,7 @@ export function GoogleMeetEmbed({
             <div className="text-center space-y-1.5">
               <p className="text-sm font-semibold text-gray-200">Start a video call with your patient</p>
               <p className="text-xs text-gray-500 max-w-xs">
-                Google Meet will open in a separate window. You can drag it next to MedScribe or use Meet&apos;s built-in PiP to keep the patient visible.
+                Google Meet opens in a separate window. When you start recording, the browser asks you to share that tab — the patient&apos;s video and audio will appear directly in MedScribe.
               </p>
             </div>
             <div className="flex gap-3">
@@ -242,7 +325,6 @@ export function GoogleMeetEmbed({
         )}
       </div>
 
-      {/* Bottom bar — meeting info */}
       {meetUrl && (
         <div className="flex items-center justify-between px-4 py-2.5 border-t border-blue-100 bg-white">
           <div className="flex items-center gap-2 text-xs text-gray-500 min-w-0">
@@ -259,11 +341,11 @@ export function GoogleMeetEmbed({
         </div>
       )}
 
-      {/* PiP tip */}
       <div className="px-4 py-2 bg-amber-50 border-t border-amber-100">
         <p className="text-[11px] text-amber-700 leading-relaxed">
-          <strong>Tip:</strong> Inside Google Meet, click <strong>⋮ &rarr; Open picture-in-picture</strong> to float the
-          patient&apos;s video on top of MedScribe while you record the consultation.
+          <strong>How it works:</strong> Open your Google Meet call first. When you click Record, the browser
+          asks which tab to share — pick the Google Meet tab and check <strong>&quot;Also share tab audio&quot;</strong>.
+          Your mic captures your voice (Channel 1) and the tab captures the patient&apos;s voice (Channel 2) for accurate transcription.
         </p>
       </div>
     </div>

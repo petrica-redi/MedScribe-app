@@ -89,6 +89,7 @@ export default function ConsultationRecordPage() {
     isMultichannel,
     streamingActive,
     streamingStatus,
+    remoteVideoStream,
     startRecording,
     stopRecording,
     pauseRecording,
@@ -582,6 +583,8 @@ export default function ConsultationRecordPage() {
                 isRecording={isRecording}
                 duration={formatDuration(duration)}
                 streamingActive={streamingActive}
+                isMultichannel={isMultichannel}
+                remoteStream={remoteVideoStream}
               />
 
               {/* Recording status bar */}
