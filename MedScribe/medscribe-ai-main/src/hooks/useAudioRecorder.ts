@@ -27,6 +27,7 @@ interface UseAudioRecorderReturn {
   isMultichannel: boolean;
   streamingActive: boolean;
   streamingStatus: string;
+  remoteVideoStream: MediaStream | null;
   startRecording: () => Promise<void>;
   stopRecording: () => Promise<void>;
   pauseRecording: () => void;
@@ -53,6 +54,7 @@ export function useAudioRecorder({
   const [isMultichannel, setIsMultichannel] = useState(false);
   const [streamingActive, setStreamingActive] = useState(false);
   const [streamingStatus, setStreamingStatus] = useState("idle");
+  const [remoteVideoStream, setRemoteVideoStream] = useState<MediaStream | null>(null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -195,6 +197,7 @@ export function useAudioRecorder({
       tabStreamRef.current.getTracks().forEach((track) => track.stop());
       tabStreamRef.current = null;
     }
+    setRemoteVideoStream(null);
 
     if (wsRef.current) {
       try {
@@ -302,7 +305,12 @@ export function useAudioRecorder({
       return micStream;
     }
 
-    tabStream.getVideoTracks().forEach((track) => track.stop());
+    // Keep video tracks alive for inline display in the consultation UI
+    const videoTracks = tabStream.getVideoTracks();
+    if (videoTracks.length > 0) {
+      const videoOnlyStream = new MediaStream(videoTracks);
+      setRemoteVideoStream(videoOnlyStream);
+    }
 
     const tabAudioTracks = tabStream.getAudioTracks();
     if (tabAudioTracks.length === 0) {
@@ -777,6 +785,7 @@ export function useAudioRecorder({
     isMultichannel,
     streamingActive,
     streamingStatus,
+    remoteVideoStream,
     startRecording,
     stopRecording,
     pauseRecording,

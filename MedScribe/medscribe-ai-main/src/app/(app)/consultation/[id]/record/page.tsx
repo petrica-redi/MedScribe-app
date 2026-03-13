@@ -89,6 +89,7 @@ export default function ConsultationRecordPage() {
     isMultichannel,
     streamingActive,
     streamingStatus,
+    remoteVideoStream,
     startRecording,
     stopRecording,
     pauseRecording,
@@ -495,6 +496,13 @@ export default function ConsultationRecordPage() {
             </CardContent>
           </Card>
 
+          {/* Remote mode: open meeting BEFORE recording */}
+          {consultationMode === "remote" && (
+            <div className="w-full max-w-2xl">
+              <GoogleMeetEmbed isRecording={false} phase="pre" />
+            </div>
+          )}
+
           {/* Stage 2: Identity & Tech Verification (telemedicine only) */}
           {consultationMode === "remote" && !identityVerified && (
             <IdentityVerification
@@ -638,26 +646,35 @@ export default function ConsultationRecordPage() {
 
           <AudioVisualizer audioLevel={audioLevel} isRecording={isRecording} isPaused={isPaused} duration={duration} />
 
-          {/* ===== Remote mode: compact video call bar + transcript + AI all visible ===== */}
+          {/* ===== Remote mode: inline video + capture status ===== */}
           {consultationMode === "remote" && (
             <div className="grid gap-3 lg:grid-cols-5">
               <div className="lg:col-span-3">
-                <GoogleMeetEmbed isRecording={isRecording} />
+                <GoogleMeetEmbed
+                  isRecording={isRecording}
+                  videoStream={remoteVideoStream}
+                  phase="recording"
+                />
               </div>
               <div className="lg:col-span-2">
-                <Card className="border-purple-200 bg-purple-50/30">
+                <Card className={`${isMultichannel ? "border-green-200 bg-green-50/30" : "border-amber-200 bg-amber-50/30"}`}>
                   <CardContent className="pt-4 pb-4">
-                    <h3 className="mb-2 text-xs font-semibold uppercase text-purple-700">
-                      {t("record.stereoTitle")}
+                    <h3 className={`mb-2 text-xs font-semibold uppercase ${isMultichannel ? "text-green-700" : "text-amber-700"}`}>
+                      {isMultichannel ? "Stereo Capture Active" : "Single Mic Mode"}
                     </h3>
-                    <ul className="text-xs text-purple-800 leading-relaxed space-y-1">
-                      <li>• <strong>{t("record.channel1")}</strong>: {t("record.channel1Desc")}</li>
-                      <li>• <strong>{t("record.channel2")}</strong>: {t("record.channel2Desc")}</li>
-                      <li>• {t("record.channelsBoth")}</li>
-                    </ul>
-                    <p className="text-[11px] text-purple-600 mt-2">
-                      {t("record.tabSharingHint")}
-                    </p>
+                    {isMultichannel ? (
+                      <ul className="text-xs text-green-800 leading-relaxed space-y-1">
+                        <li>• <strong>Channel 1</strong>: Your microphone (Doctor)</li>
+                        <li>• <strong>Channel 2</strong>: Meeting tab audio (Patient)</li>
+                        <li>• Both voices are captured separately for accurate transcription</li>
+                      </ul>
+                    ) : (
+                      <ul className="text-xs text-amber-800 leading-relaxed space-y-1">
+                        <li>• Only your microphone is being captured</li>
+                        <li>• Patient audio from the video call is <strong>not</strong> being transcribed</li>
+                        <li>• To fix: stop recording, restart and share the meeting tab</li>
+                      </ul>
+                    )}
                   </CardContent>
                 </Card>
               </div>
