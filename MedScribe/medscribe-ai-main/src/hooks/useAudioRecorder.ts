@@ -75,7 +75,7 @@ export function useAudioRecorder({
   const streamingRef = useRef(false);
   const transcriptRef = useRef<LiveTranscriptItem[]>([]);
   const chunksSentRef = useRef(0);
-  const scriptProcessorRef = useRef<ScriptProcessorNode | null>(null);
+  const workletNodeRef = useRef<AudioWorkletNode | null>(null);
 
   const reconnectAttemptsRef = useRef(0);
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -212,9 +212,9 @@ export function useAudioRecorder({
     }
     streamingRef.current = false;
 
-    if (scriptProcessorRef.current) {
-      scriptProcessorRef.current.disconnect();
-      scriptProcessorRef.current = null;
+    if (workletNodeRef.current) {
+      workletNodeRef.current.disconnect();
+      workletNodeRef.current = null;
     }
 
     if (audioContextRef.current?.state !== "closed") {
@@ -336,33 +336,49 @@ export function useAudioRecorder({
     const dest = audioCtx.createMediaStreamDestination();
     merger.connect(dest);
 
-    // ScriptProcessorNode captures raw interleaved Int16 PCM for Deepgram
+    // Use AudioWorkletNode to capture raw interleaved Int16 PCM for Deepgram
     // multichannel streaming — MediaRecorder downmixes to mono, losing
     // channel separation, so we bypass it for the WebSocket path.
-    const scriptProcessor = audioCtx.createScriptProcessor(4096, 2, 2);
-    merger.connect(scriptProcessor);
-    const silentGain = audioCtx.createGain();
-    silentGain.gain.value = 0;
-    scriptProcessor.connect(silentGain);
-    silentGain.connect(audioCtx.destination);
+    try {
+      await audioCtx.audioWorklet.addModule("/audio-interleaver.js");
+      const workletNode = new AudioWorkletNode(audioCtx, "interleaver-processor", {
+        numberOfInputs: 1,
+        numberOfOutputs: 0,
+        channelCount: 2,
+        channelCountMode: "explicit",
+        channelInterpretation: "discrete",
+      });
 
-    scriptProcessor.onaudioprocess = (event) => {
-      if (!streamingRef.current || wsRef.current?.readyState !== WebSocket.OPEN) return;
+      workletNode.port.onmessage = (event) => {
+        if (!streamingRef.current || wsRef.current?.readyState !== WebSocket.OPEN) return;
+        wsRef.current.send(event.data);
+      };
 
-      const ch0 = event.inputBuffer.getChannelData(0);
-      const ch1 = event.inputBuffer.getChannelData(1);
-      const length = ch0.length;
-      const interleaved = new Int16Array(length * 2);
+      merger.connect(workletNode);
+      workletNodeRef.current = workletNode;
+    } catch {
+      // AudioWorklet not supported — fall back to ScriptProcessorNode
+      const scriptProcessor = audioCtx.createScriptProcessor(4096, 2, 2);
+      merger.connect(scriptProcessor);
+      const silentGain = audioCtx.createGain();
+      silentGain.gain.value = 0;
+      scriptProcessor.connect(silentGain);
+      silentGain.connect(audioCtx.destination);
 
-      for (let i = 0; i < length; i++) {
-        interleaved[i * 2] = Math.max(-32768, Math.min(32767, Math.round(ch0[i] * 32767)));
-        interleaved[i * 2 + 1] = Math.max(-32768, Math.min(32767, Math.round(ch1[i] * 32767)));
-      }
-
-      wsRef.current.send(interleaved.buffer);
-    };
-
-    scriptProcessorRef.current = scriptProcessor;
+      scriptProcessor.onaudioprocess = (event) => {
+        if (!streamingRef.current || wsRef.current?.readyState !== WebSocket.OPEN) return;
+        const ch0 = event.inputBuffer.getChannelData(0);
+        const ch1 = event.inputBuffer.getChannelData(1);
+        const length = ch0.length;
+        const interleaved = new Int16Array(length * 2);
+        for (let i = 0; i < length; i++) {
+          interleaved[i * 2] = Math.max(-32768, Math.min(32767, Math.round(ch0[i] * 32767)));
+          interleaved[i * 2 + 1] = Math.max(-32768, Math.min(32767, Math.round(ch1[i] * 32767)));
+        }
+        wsRef.current.send(interleaved.buffer);
+      };
+      workletNodeRef.current = scriptProcessor as unknown as AudioWorkletNode;
+    }
 
     const analyser = audioCtx.createAnalyser();
     analyser.fftSize = 256;
