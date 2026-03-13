@@ -274,10 +274,12 @@ export function useAudioRecorder({
     }, []);
 
   const startRemoteRecording = useCallback(async (): Promise<MediaStream> => {
+    // Enable echo cancellation in remote mode so the mic works alongside
+    // video call apps (Google Meet / Zoom) that also hold the microphone.
     const micStream = await navigator.mediaDevices.getUserMedia({
       audio: {
-        echoCancellation: false,
-        noiseSuppression: false,
+        echoCancellation: true,
+        noiseSuppression: true,
         autoGainControl: true,
       },
     });
@@ -292,11 +294,7 @@ export function useAudioRecorder({
     let tabStream: MediaStream | null = null;
     try {
       tabStream = await navigator.mediaDevices.getDisplayMedia({
-        audio: {
-          echoCancellation: false,
-          noiseSuppression: false,
-          autoGainControl: false,
-        },
+        audio: true,
         video: true,
       });
     } catch {

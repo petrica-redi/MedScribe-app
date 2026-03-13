@@ -496,19 +496,6 @@ export default function ConsultationRecordPage() {
             </CardContent>
           </Card>
 
-          {/* Remote mode: brief instruction (no duplicate meeting controls) */}
-          {consultationMode === "remote" && (
-            <Card className="w-full max-w-md border-blue-200 bg-blue-50/30">
-              <CardContent className="pt-5 pb-4 space-y-2">
-                <p className="text-xs font-semibold text-blue-900">Before you start recording:</p>
-                <ol className="text-xs text-blue-800 leading-relaxed space-y-1 list-decimal list-inside">
-                  <li>Open your Google Meet / Zoom in a <strong>separate browser tab</strong></li>
-                  <li>When you click record, share that meeting tab and check <strong>&quot;Also share tab audio&quot;</strong></li>
-                </ol>
-              </CardContent>
-            </Card>
-          )}
-
           {/* Stage 2: Identity & Tech Verification (telemedicine only) */}
           {consultationMode === "remote" && !identityVerified && (
             <IdentityVerification
@@ -599,8 +586,8 @@ export default function ConsultationRecordPage() {
 
           <AudioVisualizer audioLevel={audioLevel} isRecording={isRecording} isPaused={isPaused} duration={duration} />
 
-          {/* Remote mode: inline video or mic-only status */}
-          {consultationMode === "remote" && (
+          {/* Remote mode: show inline video if tab was shared */}
+          {consultationMode === "remote" && remoteVideoStream && (
             <GoogleMeetEmbed
               videoStream={remoteVideoStream}
               isMultichannel={isMultichannel}

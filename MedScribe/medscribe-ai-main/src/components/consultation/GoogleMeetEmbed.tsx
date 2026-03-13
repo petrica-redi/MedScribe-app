@@ -4,7 +4,7 @@ import { useRef, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 
 interface GoogleMeetEmbedProps {
-  videoStream?: MediaStream | null;
+  videoStream: MediaStream;
   isMultichannel: boolean;
 }
 
@@ -21,23 +21,6 @@ export function GoogleMeetEmbed({ videoStream, isMultichannel }: GoogleMeetEmbed
       if (el) el.srcObject = null;
     };
   }, [videoStream]);
-
-  const hasVideo = videoStream && videoStream.getVideoTracks().length > 0;
-
-  if (!hasVideo) {
-    return (
-      <Card className="border-amber-200 bg-amber-50/30">
-        <CardContent className="py-3 px-4">
-          <div className="flex items-center gap-2 text-xs text-amber-700">
-            <span className="h-2 w-2 rounded-full bg-amber-400 shrink-0" />
-            <span>
-              <strong>Mic only</strong> — tab sharing was skipped. Only your microphone is captured.
-            </span>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
 
   return (
     <Card className="overflow-hidden border-green-200">
@@ -62,7 +45,7 @@ export function GoogleMeetEmbed({ videoStream, isMultichannel }: GoogleMeetEmbed
           <span className="h-2 w-2 rounded-full bg-green-500 shrink-0" />
           <span className="text-[10px] text-green-700">
             {isMultichannel
-              ? "Stereo capture — Doctor (mic) + Patient (tab audio)"
+              ? "Stereo — Doctor (mic) + Patient (tab audio)"
               : "Video captured — audio via microphone"}
           </span>
         </div>
