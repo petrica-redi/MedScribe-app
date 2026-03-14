@@ -24,7 +24,11 @@ function tryAutoRecover(error: Error) {
     const attempts = parseInt(sessionStorage.getItem(RELOAD_KEY) ?? "0", 10);
     if (attempts >= RELOAD_MAX) return false; // Already tried, stop looping
     sessionStorage.setItem(RELOAD_KEY, String(attempts + 1));
-    window.location.reload();
+    // Use a cache-busting URL so the browser fetches a fresh page + new JS bundles,
+    // bypassing any stale cached chunks that caused the hooks mismatch.
+    const url = new URL(window.location.href);
+    url.searchParams.set("_v", Date.now().toString());
+    window.location.replace(url.toString());
     return true;
   } catch {
     return false;

@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState, useEffect, useRef } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -17,23 +17,12 @@ function SignInForm() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [urlError, setUrlError] = useState<string | null>(null);
-  const clearedRef = useRef(false);
 
   const timeoutReason = searchParams.get("reason") === "timeout";
-
-  // Move URL error to local state and clean the URL so it doesn't persist on refresh
-  useEffect(() => {
-    const err = searchParams.get("error");
-    if (err && !clearedRef.current) {
-      clearedRef.current = true;
-      setUrlError(decodeURIComponent(err));
-      // Strip the error from the URL without re-rendering the page
-      const clean = new URL(window.location.href);
-      clean.searchParams.delete("error");
-      window.history.replaceState({}, "", clean.toString());
-    }
-  }, [searchParams]);
+  // Read URL error directly — no extra state/ref/effect needed
+  const urlError = searchParams.get("error")
+    ? decodeURIComponent(searchParams.get("error") ?? "")
+    : null;
 
   async function handleSignIn(e: React.FormEvent) {
     e.preventDefault();
@@ -89,7 +78,11 @@ function SignInForm() {
               <p className="text-sm font-medium text-amber-800">Previous sign-in attempt failed</p>
               <p className="mt-0.5 text-xs text-amber-700">Please click &ldquo;Continue with Google&rdquo; below to try again.</p>
             </div>
-            <button onClick={() => setUrlError(null)} className="text-amber-500 transition hover:text-amber-700" aria-label="Dismiss">
+            <button
+              onClick={() => router.replace("/auth/signin")}
+              className="text-amber-500 transition hover:text-amber-700"
+              aria-label="Dismiss"
+            >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>

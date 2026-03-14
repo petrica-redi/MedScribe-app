@@ -18,6 +18,14 @@ const nextConfig: NextConfig = {
     },
   },
   outputFileTracingRoot: path.resolve(__dirname),
+  redirects: async () => [
+    // Browsers request favicon.ico; redirect to the SVG version so there are no 404s
+    {
+      source: "/favicon.ico",
+      destination: "/favicon.svg",
+      permanent: true,
+    },
+  ],
   headers: async () => [
     {
       source: "/(.*)",

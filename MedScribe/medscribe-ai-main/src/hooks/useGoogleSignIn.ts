@@ -32,16 +32,12 @@ export function useGoogleSignIn({
   onError,
   onLoading,
 }: UseGoogleSignInOptions = {}) {
-  const router = useRouter();
-  const buttonRef = useRef<HTMLDivElement>(null);
-  const scriptLoadedRef = useRef(false);
-  const buttonRenderedRef = useRef(false);
-  // Keep a stable ref so GIS always calls the latest handler (avoids stale closure)
-  const callbackRef = useRef<(response: { credential: string }) => Promise<void>>(
-    async () => undefined,
-  );
+  const router = useRouter();                         // hook 1
+  const buttonRef = useRef<HTMLDivElement>(null);     // hook 2
+  const scriptLoadedRef = useRef(false);              // hook 3
+  const renderedRef = useRef(false);                  // hook 4
 
-  const handleCredentialResponse = useCallback(
+  const handleCredentialResponse = useCallback(       // hook 5
     async (response: { credential: string }) => {
       onLoading?.(true);
       onError?.("");
@@ -61,33 +57,26 @@ export function useGoogleSignIn({
       router.push("/dashboard");
       router.refresh();
     },
-    [router, onError, onLoading],
+    // setError/setLoading from useState are stable; router is stable too
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
   );
 
-  // Keep callbackRef current so GIS always calls the latest version
-  useEffect(() => {
-    callbackRef.current = handleCredentialResponse;
-  }, [handleCredentialResponse]);
-
-  useEffect(() => {
+  useEffect(() => {                                   // hook 6
     if (!GOOGLE_CLIENT_ID) return;
 
     function initAndRender() {
       if (!window.google?.accounts?.id || !buttonRef.current) return;
 
-      // Always re-initialize so the callback is fresh
       window.google.accounts.id.initialize({
         client_id: GOOGLE_CLIENT_ID,
-        // Stable wrapper so GIS always calls the current closure
-        callback: (response: { credential: string }) => callbackRef.current(response),
+        callback: handleCredentialResponse,
         ux_mode: "popup",
       });
 
-      if (!buttonRenderedRef.current) {
-        buttonRenderedRef.current = true;
-        // Use a fixed width of 400 as fallback; GIS will cap at container width anyway
+      if (!renderedRef.current) {
+        renderedRef.current = true;
         const width = buttonRef.current.offsetWidth || 400;
-
         window.google.accounts.id.renderButton(buttonRef.current, {
           theme: "outline",
           size: "large",
@@ -105,7 +94,6 @@ export function useGoogleSignIn({
     }
 
     if (scriptLoadedRef.current) {
-      // Script is loading — poll until ready
       const interval = setInterval(() => {
         if (window.google?.accounts?.id) {
           clearInterval(interval);
@@ -122,8 +110,9 @@ export function useGoogleSignIn({
     script.defer = true;
     script.onload = initAndRender;
     document.head.appendChild(script);
+  // handleCredentialResponse is stable (empty deps), so this effect runs once
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Run once — callbackRef stays current via the effect above
+  }, []);
 
   return { buttonRef };
 }
