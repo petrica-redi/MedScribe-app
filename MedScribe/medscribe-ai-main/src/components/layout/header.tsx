@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Bell, Menu, Search, Sparkles } from 'lucide-react';
+import { Bell, Menu, Search } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n/context';
 import { LanguageSwitcher } from '@/components/ui/language-switcher';
 
@@ -72,7 +72,7 @@ export function Header({ onMenuClick, userEmail, onSignOut }: HeaderProps) {
     (searchResults?.patients?.length || 0);
 
   return (
-    <header className="fixed left-0 right-0 top-0 z-40 border-b border-white/70 bg-white/70 px-4 py-3 backdrop-blur-xl lg:left-72 sm:px-6">
+    <header className="fixed left-0 right-0 top-0 z-40 border-b border-medical-border/40 bg-white/80 px-4 py-3 backdrop-blur-xl lg:left-72 sm:px-6">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <button
@@ -82,10 +82,6 @@ export function Header({ onMenuClick, userEmail, onSignOut }: HeaderProps) {
           >
             <Menu className="h-5 w-5" />
           </button>
-          <div className="hidden items-center gap-2 rounded-xl border border-brand-100 bg-brand-50/70 px-3 py-1.5 text-xs font-semibold text-brand-700 sm:flex">
-            <Sparkles className="h-4 w-4" />
-            {t('header.precisionWorkspace')}
-          </div>
         </div>
 
         <div ref={searchRef} className="relative hidden max-w-xl flex-1 sm:block">
@@ -190,7 +186,7 @@ export function Header({ onMenuClick, userEmail, onSignOut }: HeaderProps) {
                 <p className="text-xs text-medical-muted">{t('header.signedIn')}</p>
                 <p className="text-sm font-semibold text-medical-text">{userEmail}</p>
               </div>
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-brand-600 to-brand-400 text-sm font-bold text-white">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-700 text-sm font-bold text-white">
                 {userEmail.charAt(0).toUpperCase()}
               </div>
             </div>
