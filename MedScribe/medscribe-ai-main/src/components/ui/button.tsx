@@ -13,9 +13,9 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         disabled={disabled}
         className={cn(
-          "inline-flex items-center justify-center rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-brand-600/25 disabled:cursor-not-allowed disabled:opacity-50",
+          "inline-flex items-center justify-center rounded-lg font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/30 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
           {
-            "bg-brand-700 text-white hover:bg-brand-800 shadow-sm": variant === "primary",
+            "bg-brand-700 text-white shadow-sm hover:bg-brand-800 active:bg-brand-900 transition-all": variant === "primary",
             "bg-gray-100 text-medical-text hover:bg-gray-200": variant === "secondary",
             "bg-medical-recording text-white hover:bg-red-700": variant === "danger",
             "text-medical-muted hover:bg-gray-100 hover:text-medical-text": variant === "ghost",
