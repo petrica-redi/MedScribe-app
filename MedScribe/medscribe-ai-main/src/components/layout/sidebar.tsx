@@ -19,6 +19,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useTranslation } from '@/lib/i18n/context';
 import { LanguageSwitcher } from '@/components/ui/language-switcher';
+import { ScrivaLogo } from '@/components/ui/ScrivaLogo';
 import type { TranslationKey } from '@/lib/i18n/translations';
 
 interface SidebarProps {
@@ -64,11 +65,10 @@ export function Sidebar({ isOpen, onClose, userEmail, onSignOut }: SidebarProps)
         )}
       >
         <Link href="/dashboard" className="group mb-8 flex items-center gap-3.5" onClick={onClose}>
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-700 shadow-md shadow-brand-900/20 transition group-hover:shadow-lg group-hover:shadow-brand-900/25">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M4 12h2l3-6 4 12 3-6h4" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </div>
+          <ScrivaLogo
+            size={40}
+            className="shrink-0 transition group-hover:opacity-90"
+          />
           <div>
             <p className="text-[19px] font-semibold tracking-[-0.02em] text-medical-text">Scriva</p>
             <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-brand-600">Clinical AI</p>

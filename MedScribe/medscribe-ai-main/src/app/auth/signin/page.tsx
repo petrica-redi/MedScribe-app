@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useTranslation } from "@/lib/i18n/context";
 import { LanguageSwitcher } from "@/components/ui/language-switcher";
 import { useGoogleSignIn } from "@/hooks/useGoogleSignIn";
+import { ScrivaLogo } from "@/components/ui/ScrivaLogo";
 
 function SignInForm() {
   const router = useRouter();
@@ -55,11 +56,7 @@ function SignInForm() {
       <div className="surface-elevated p-8">
         {/* Logo */}
         <div className="mb-8 flex flex-col items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-700">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-              <path d="M4 12h2l3-6 4 12 3-6h4" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </div>
+          <ScrivaLogo size={48} />
           <div className="text-center">
             <h1 className="text-2xl font-bold tracking-tight">
               <span className="bg-gradient-to-r from-brand-700 to-brand-500 bg-clip-text text-transparent">Scriva</span>

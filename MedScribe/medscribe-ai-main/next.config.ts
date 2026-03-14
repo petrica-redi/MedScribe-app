@@ -19,11 +19,13 @@ const nextConfig: NextConfig = {
   },
   outputFileTracingRoot: path.resolve(__dirname),
   redirects: async () => [
-    // Browsers request favicon.ico; redirect to the SVG version so there are no 404s
+    // Browsers still request /favicon.ico as a fallback regardless of HTML <link>.
+    // Next.js App Router serves /icon.png from src/app/icon.tsx; redirect the .ico
+    // request there so there are no 404s.
     {
       source: "/favicon.ico",
-      destination: "/favicon.svg",
-      permanent: true,
+      destination: "/icon.png",
+      permanent: false,
     },
   ],
   headers: async () => [

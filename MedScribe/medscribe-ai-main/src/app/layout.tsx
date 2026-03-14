@@ -13,9 +13,6 @@ export const metadata: Metadata = {
     template: "%s — Scriva",
   },
   description: "Clinical AI for European Healthcare — real-time transcription, diagnostic guidance, and intelligent documentation",
-  icons: {
-    icon: "/favicon.svg",
-  },
   metadataBase: new URL("https://scriva.doctor"),
   openGraph: {
     title: "Scriva — Clinical AI for European Healthcare",
