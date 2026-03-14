@@ -28,8 +28,12 @@ export async function GET(request: Request) {
   const { error } = await supabase.auth.exchangeCodeForSession(code);
 
   if (error) {
+    // Don't expose the raw technical error (contains auth codes); use a short message
+    const msg = error.message.startsWith("Unable to exchange")
+      ? "Google sign-in failed. Please use the button on this page to try again."
+      : error.message;
     return NextResponse.redirect(
-      new URL(`/auth/signin?error=${encodeURIComponent(error.message)}`, request.url)
+      new URL(`/auth/signin?error=${encodeURIComponent(msg)}`, request.url)
     );
   }
 
