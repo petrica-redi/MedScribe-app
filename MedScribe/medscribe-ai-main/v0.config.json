@@ -9,35 +9,35 @@
   "tailwind": {
     "colors": {
       "brand": {
-        "50": "#eff6ff",
-        "100": "#dbeafe",
-        "200": "#bfdbfe",
-        "300": "#93c5fd",
-        "400": "#60a5fa",
-        "500": "#3b82f6",
-        "600": "#2563eb",
-        "700": "#1d4ed8",
-        "800": "#1e40af",
-        "900": "#1e3a8a",
-        "950": "#172554"
+        "50":  "#f0fdfa",
+        "100": "#ccfbf1",
+        "200": "#99f6e4",
+        "300": "#5eead4",
+        "400": "#2dd4bf",
+        "500": "#14b8a6",
+        "600": "#0d9488",
+        "700": "#0f766e",
+        "800": "#115e59",
+        "900": "#134e4a",
+        "950": "#042f2e"
       },
       "medical": {
-        "bg": "#f8fafc",
-        "card": "#ffffff",
-        "border": "#e2e8f0",
-        "text": "#0f172a",
-        "muted": "#64748b",
-        "accent": "#2563eb",
-        "success": "#16a34a",
-        "warning": "#d97706",
-        "danger": "#dc2626",
-        "recording": "#b91c1c"
+        "bg":        "#fafbfc",
+        "card":      "#ffffff",
+        "border":    "#e8ecf0",
+        "text":      "#1a2332",
+        "muted":     "#6b7a8d",
+        "accent":    "#0d9488",
+        "success":   "#059669",
+        "warning":   "#d97706",
+        "danger":    "#dc2626",
+        "recording": "#dc2626"
       }
     },
     "fonts": {
-      "sans": "var(--font-sans)",
-      "display": "var(--font-display)",
-      "mono": "JetBrains Mono"
+      "sans":    "var(--font-sans)",
+      "display": "var(--font-sans)",
+      "mono":    "JetBrains Mono"
     }
   },
   "designTokens": {

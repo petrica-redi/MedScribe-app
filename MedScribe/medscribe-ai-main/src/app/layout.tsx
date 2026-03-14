@@ -1,15 +1,10 @@
 import type { Metadata } from "next";
-import { Manrope, Fraunces } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 
-const manrope = Manrope({
-  subsets: ["latin"],
+const inter = Inter({
+  subsets: ["latin", "latin-ext"],
   variable: "--font-sans",
-});
-
-const fraunces = Fraunces({
-  subsets: ["latin"],
-  variable: "--font-display",
 });
 
 export const metadata: Metadata = {
@@ -25,7 +20,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${manrope.variable} ${fraunces.variable} font-sans bg-medical-bg text-medical-text antialiased`}
+        className={`${inter.variable} font-sans bg-medical-bg text-medical-text antialiased`}
         suppressHydrationWarning
       >
         {children}
