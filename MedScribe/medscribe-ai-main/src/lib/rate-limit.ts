@@ -73,13 +73,16 @@ export function checkRateLimit(
 
 /**
  * AI-specific rate limiter.
- * 5 requests per 60 seconds per user, with separate buckets
- * for different service tiers.
+ * 30 requests per 60 seconds per user per service.
+ * A live consultation fires ~6-8 AI calls in parallel (auto-analyze,
+ * clinical decision support, criteria tracker, etc.) so 30/min is the
+ * minimum for a usable experience. Monthly caps in ai/rate-limit.ts
+ * prevent sustained abuse.
  */
 export function checkAIRateLimit(
   userId: string,
   service: "anthropic" | "deepgram" | "ai" = "ai"
 ): RateLimitResult {
   const key = `ai:${service}:${userId}`;
-  return checkRateLimit(key, 5, 60_000);
+  return checkRateLimit(key, 30, 60_000);
 }

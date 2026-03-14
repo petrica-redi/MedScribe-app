@@ -3,11 +3,12 @@ import { updateSession } from "@/lib/supabase/middleware";
 
 // ---------------------------------------------------------------------------
 // In-memory sliding-window rate limiter for AI API routes.
-// 5 requests per 60 seconds per IP.  Runs on the Edge Runtime so the Map
-// persists across warm invocations within the same region.
+// 30 requests per 60 seconds per IP.  Generous enough for a live consultation
+// (auto-analyze, clinical decision support, criteria tracker run in parallel)
+// but still blocks sustained abuse.
 // ---------------------------------------------------------------------------
 
-const AI_RATE_LIMIT = 5;
+const AI_RATE_LIMIT = 30;
 const AI_WINDOW_MS = 60_000;
 
 const aiRateLimitStore = new Map<string, number[]>();
@@ -81,7 +82,7 @@ export async function middleware(request: NextRequest) {
     if (!result.allowed) {
       return NextResponse.json(
         {
-          error: "Rate limit exceeded. Maximum 5 AI requests per minute.",
+          error: "Rate limit exceeded. Maximum 30 AI requests per minute.",
           retry_after_seconds: result.retryAfterSec,
         },
         {

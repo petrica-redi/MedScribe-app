@@ -128,7 +128,7 @@ export async function generateWithFallback(req: AICompletionRequest): Promise<AI
     const limit = checkAIRateLimit(req.userId, "anthropic");
     if (!limit.allowed) {
       throw new Error(
-        `Rate limit exceeded: maximum 5 AI requests per minute. Try again in ${Math.ceil(limit.resetInMs / 1000)}s.`
+        `Rate limit exceeded. Try again in ${Math.ceil(limit.resetInMs / 1000)}s.`
       );
     }
   }
