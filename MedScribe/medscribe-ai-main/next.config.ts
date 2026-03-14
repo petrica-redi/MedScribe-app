@@ -5,8 +5,8 @@ import { withSentryConfig } from "@sentry/nextjs";
 const isDev = process.env.NODE_ENV !== "production";
 
 const scriptSrc = isDev
-  ? "script-src 'self' 'unsafe-eval' 'unsafe-inline'"
-  : "script-src 'self' 'unsafe-inline'";
+  ? "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://accounts.google.com"
+  : "script-src 'self' 'unsafe-inline' https://accounts.google.com";
 
 const nextConfig: NextConfig = {
   eslint: {
@@ -36,9 +36,10 @@ const nextConfig: NextConfig = {
             "default-src 'self'",
             scriptSrc,
             "style-src 'self' 'unsafe-inline'",
-            "img-src 'self' data: blob:",
-            "font-src 'self'",
-            "connect-src 'self' wss://*.supabase.co https://*.supabase.co wss://api.deepgram.com https://api.deepgram.com https://api.anthropic.com https://*.ingest.sentry.io wss://localhost:* http://localhost:* ws://10.211.55.3:* wss://10.211.55.3:* http://10.211.55.3:* https://10.211.55.3:*",
+            "img-src 'self' data: blob: https://*.googleusercontent.com https://lh3.googleusercontent.com",
+            "font-src 'self' https://fonts.gstatic.com",
+            "connect-src 'self' wss://*.supabase.co https://*.supabase.co wss://api.deepgram.com https://api.deepgram.com https://api.anthropic.com https://*.ingest.sentry.io wss://localhost:* http://localhost:* ws://10.211.55.3:* wss://10.211.55.3:* http://10.211.55.3:* https://10.211.55.3:* https://accounts.google.com https://oauth2.googleapis.com https://openidconnect.googleapis.com",
+            "frame-src https://accounts.google.com",
             "media-src 'self' blob:",
           ].join("; "),
         },

@@ -34,7 +34,7 @@ export function useGoogleSignIn({
 }: UseGoogleSignInOptions = {}) {
   const router = useRouter();
   const buttonRef = useRef<HTMLDivElement>(null);
-  const scriptLoaded = useRef(false);
+  const scriptLoadedRef = useRef(false);
   const initializedRef = useRef(false);
 
   const handleCredentialResponse = useCallback(
@@ -61,11 +61,11 @@ export function useGoogleSignIn({
   );
 
   useEffect(() => {
-    if (!GOOGLE_CLIENT_ID || initializedRef.current) return;
+    if (!GOOGLE_CLIENT_ID) return;
 
-    function initGIS() {
-      if (!window.google || !buttonRef.current || initializedRef.current)
-        return;
+    function renderBtn() {
+      if (!window.google?.accounts?.id || !buttonRef.current) return;
+      if (initializedRef.current) return;
       initializedRef.current = true;
 
       window.google.accounts.id.initialize({
@@ -74,30 +74,42 @@ export function useGoogleSignIn({
         ux_mode: "popup",
       });
 
+      // Use a fixed width of 400 as fallback; GIS will cap at container width anyway
+      const width = buttonRef.current.offsetWidth || 400;
+
       window.google.accounts.id.renderButton(buttonRef.current, {
         theme: "outline",
         size: "large",
-        width: buttonRef.current.offsetWidth,
+        width,
         text: "continue_with",
         shape: "rectangular",
         logo_alignment: "left",
       });
     }
 
-    if (window.google) {
-      initGIS();
+    if (window.google?.accounts?.id) {
+      renderBtn();
       return;
     }
 
-    if (!scriptLoaded.current) {
-      scriptLoaded.current = true;
-      const script = document.createElement("script");
-      script.src = "https://accounts.google.com/gsi/client";
-      script.async = true;
-      script.defer = true;
-      script.onload = initGIS;
-      document.head.appendChild(script);
+    // Script already added by another instance, poll for readiness
+    if (scriptLoadedRef.current) {
+      const interval = setInterval(() => {
+        if (window.google?.accounts?.id) {
+          clearInterval(interval);
+          renderBtn();
+        }
+      }, 100);
+      return () => clearInterval(interval);
     }
+
+    scriptLoadedRef.current = true;
+    const script = document.createElement("script");
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.defer = true;
+    script.onload = renderBtn;
+    document.head.appendChild(script);
   }, [handleCredentialResponse]);
 
   return { buttonRef };
