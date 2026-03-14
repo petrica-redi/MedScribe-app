@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 const ALL_SLOTS = [
   "09:00", "09:30", "10:00", "10:30", "11:00", "11:30",
@@ -14,6 +15,10 @@ export async function GET(request: NextRequest) {
   }
 
   const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   // Fetch booked slots for this date
   const { data: booked } = await supabase
@@ -43,14 +48,24 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Rate limit: 10 bookings per minute per user
+    const rl = checkRateLimit(`booking:${user.id}`, 10, 60_000);
+    if (!rl.allowed) {
+      return NextResponse.json({ error: "Too many requests. Please try again shortly." }, { status: 429 });
+    }
+
     const body = await request.json();
     const { visit_type, date, time, patient_name, patient_email, patient_phone, reason, doctor_id } = body;
 
     if (!visit_type || !date || !time || !patient_name || !patient_email || !patient_phone || !doctor_id) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
-
-    const supabase = await createClient();
 
     // Find or create patient
     const { data: existingPatients } = await supabase

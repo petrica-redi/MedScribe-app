@@ -35,6 +35,7 @@ export async function DELETE(request: Request) {
     const consultationIds = (consultations || []).map((c) => c.id);
 
     if (consultationIds.length > 0) {
+      // Delete all consultation-dependent data (order matters for FK constraints)
       await supabaseAdmin
         .from("clinical_notes")
         .delete()
@@ -42,6 +43,27 @@ export async function DELETE(request: Request) {
 
       await supabaseAdmin
         .from("transcripts")
+        .delete()
+        .in("consultation_id", consultationIds);
+
+      // Additional consultation-linked tables that were previously missed
+      await supabaseAdmin
+        .from("vitals")
+        .delete()
+        .in("consultation_id", consultationIds);
+
+      await supabaseAdmin
+        .from("prescriptions")
+        .delete()
+        .in("consultation_id", consultationIds);
+
+      await supabaseAdmin
+        .from("follow_ups")
+        .delete()
+        .in("consultation_id", consultationIds);
+
+      await supabaseAdmin
+        .from("documents")
         .delete()
         .in("consultation_id", consultationIds);
     }
@@ -55,6 +77,9 @@ export async function DELETE(request: Request) {
     // 4. Note templates
     await supabaseAdmin.from("note_templates").delete().eq("user_id", user.id);
 
+    // 4b. Note styles (user preferences)
+    await supabaseAdmin.from("note_styles").delete().eq("user_id", user.id);
+
     // 5. Audit log (delete all except the deletion record we just created)
     await supabaseAdmin
       .from("audit_log")
@@ -67,7 +92,8 @@ export async function DELETE(request: Request) {
 
     return NextResponse.json({ success: true, message: "All data deleted" });
   } catch (error) {
-    console.error("Data deletion error:", error);
+    // Log the error server-side only (never expose GDPR deletion details to client)
+    if (process.env.NODE_ENV !== "production") console.error("Data deletion error:", error);
     return NextResponse.json(
       { error: "Failed to delete data" },
       { status: 500 }

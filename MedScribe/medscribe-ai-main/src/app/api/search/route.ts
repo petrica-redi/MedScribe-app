@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
 function sanitizeSearchInput(input: string): string {
-  return input.replace(/[%_\\(),.'":;]/g, "");
+  // Strip SQL wildcards, tsquery operators, and special chars
+  return input.replace(/[%_\\(),.'"":;&|!<>*]/g, "");
 }
 
 /**
@@ -54,10 +55,12 @@ export async function GET(request: NextRequest) {
     }
 
     if (type === "all" || type === "notes") {
+      // Use sanitized query split into AND terms for safer full-text search
+      const safeQuery = query.split(/\s+/).filter(Boolean).join(" & ");
       const { data: transcripts } = await supabase
         .from("transcripts")
         .select("consultation_id, full_text")
-        .textSearch("full_text", query, { type: "websearch" })
+        .textSearch("full_text", safeQuery || query, { type: "plain" })
         .limit(10);
 
       if (transcripts && transcripts.length > 0) {

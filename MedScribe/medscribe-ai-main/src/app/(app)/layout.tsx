@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { Providers } from '@/components/providers';
 import { ToastProvider } from '@/components/ui/toast';
 import { AppShell } from '@/components/layout/app-shell';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 export const metadata = {
   title: 'Scriva',
@@ -26,11 +27,13 @@ export default async function AppLayout({
 
   return (
     <Providers>
-      <ToastProvider>
-        <AppShell userEmail={user.email}>
-          {children}
-        </AppShell>
-      </ToastProvider>
+      <ErrorBoundary>
+        <ToastProvider>
+          <AppShell userEmail={user.email}>
+            {children}
+          </AppShell>
+        </ToastProvider>
+      </ErrorBoundary>
     </Providers>
   );
 }

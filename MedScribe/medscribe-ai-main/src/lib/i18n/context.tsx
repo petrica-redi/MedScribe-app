@@ -28,15 +28,24 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>("en");
 
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored === "ro" || stored === "en") {
-      setLocaleState(stored);
+    if (typeof window === "undefined") return;
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored === "ro" || stored === "en") {
+        setLocaleState(stored);
+      }
+    } catch {
+      // localStorage unavailable (SSR or restricted context)
     }
   }, []);
 
   const setLocale = useCallback((newLocale: Locale) => {
     setLocaleState(newLocale);
-    localStorage.setItem(STORAGE_KEY, newLocale);
+    try {
+      localStorage.setItem(STORAGE_KEY, newLocale);
+    } catch {
+      // localStorage unavailable
+    }
   }, []);
 
   const t = useCallback(

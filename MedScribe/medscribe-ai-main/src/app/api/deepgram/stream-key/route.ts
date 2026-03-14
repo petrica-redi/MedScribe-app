@@ -49,19 +49,15 @@ export async function POST() {
         }
       }
     } catch {
-      // Scoped key creation failed — fall back to main key.
-      // This happens when the Deepgram plan doesn't support the keys API.
+      // Scoped key creation failed — will return error below.
     }
 
-    // Fallback: send the main key (less secure but functional)
-    return NextResponse.json({
-      key: apiKey,
-      streaming_available: true,
-      provider: "deepgram",
-      ws_url: "wss://api.deepgram.com",
-    });
-  } catch (err) {
-    console.error("[StreamKey] Error:", err);
+    // Scoped key creation failed — do NOT expose the master key.
+    return NextResponse.json(
+      { error: "Failed to create streaming session. Please try again.", streaming_available: false },
+      { status: 503 }
+    );
+  } catch {
     return NextResponse.json(
       { error: "Failed to get streaming key" },
       { status: 500 }
