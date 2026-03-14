@@ -72,6 +72,7 @@ export default function ConsultationRecordPage() {
   const [savedDuration, setSavedDuration] = useState(0);
   const [identityVerified, setIdentityVerified] = useState(false);
   const [trackedProblems, setTrackedProblems] = useState<TrackedProblem[]>([]);
+  const [shouldCloseMeet, setShouldCloseMeet] = useState(false);
 
   const patientName: string | undefined =
     typeof consultationData?.metadata?.patient_name === "string"
@@ -222,6 +223,7 @@ export default function ConsultationRecordPage() {
 
   const handleEndRecording = async () => {
     try {
+      setShouldCloseMeet(true);
       await stopRecording();
 
       // Save transcript to database
@@ -586,6 +588,9 @@ export default function ConsultationRecordPage() {
                   <span className="text-lg font-mono text-medical-text">{formatDuration(duration)}</span>
                 </div>
                 <div className="flex items-center gap-2">
+                  {streamingStatus && streamingStatus !== "idle" && (
+                    <span className="text-[10px] text-gray-500 font-mono">{streamingStatus}</span>
+                  )}
                   <div className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${streamingActive ? "bg-purple-100 text-purple-700" : "bg-green-100 text-green-700"}`}>
                     <div className={`h-2 w-2 rounded-full ${streamingActive ? "bg-purple-500 animate-pulse" : "bg-green-500"}`} />
                     {streamingActive ? t("record.streamingLive") : t("record.connected")}
@@ -607,6 +612,7 @@ export default function ConsultationRecordPage() {
                       streamingActive={streamingActive}
                       isMultichannel={isMultichannel}
                       remoteStream={remoteVideoStream}
+                      shouldClose={shouldCloseMeet}
                     />
                     </div>
                     <div className="flex-1 min-w-0 w-full">
@@ -665,6 +671,9 @@ export default function ConsultationRecordPage() {
                   <span className="text-lg font-mono text-medical-text">{formatDuration(duration)}</span>
                 </div>
                 <div className="flex items-center gap-2">
+                  {streamingStatus && streamingStatus !== "idle" && (
+                    <span className="text-[10px] text-gray-500 font-mono">{streamingStatus}</span>
+                  )}
                   <div className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${streamingActive ? "bg-purple-100 text-purple-700" : "bg-green-100 text-green-700"}`}>
                     <div className={`h-2 w-2 rounded-full ${streamingActive ? "bg-purple-500 animate-pulse" : "bg-green-500"}`} />
                     {streamingActive ? t("record.streamingLive") : t("record.connected")}

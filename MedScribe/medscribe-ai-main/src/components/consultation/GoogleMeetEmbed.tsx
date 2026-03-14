@@ -14,6 +14,8 @@ interface GoogleMeetEmbedProps {
   isMultichannel?: boolean;
   /** The captured tab video stream (Google Meet tab shared via getDisplayMedia). */
   remoteStream?: MediaStream | null;
+  /** When true, close the Meet popup window (used when consultation ends). */
+  shouldClose?: boolean;
 }
 
 const POPUP_W = 700;
@@ -30,6 +32,7 @@ export function GoogleMeetEmbed({
   streamingActive,
   isMultichannel,
   remoteStream,
+  shouldClose = false,
 }: GoogleMeetEmbedProps) {
   const [meetUrl, setMeetUrl] = useState("");
   const [popupAlive, setPopupAlive] = useState(false);
@@ -55,6 +58,15 @@ export function GoogleMeetEmbed({
   }, [remoteStream]);
 
   const hasRemoteVideo = remoteStream && remoteStream.getVideoTracks().length > 0;
+
+  // Close popup when consultation ends
+  useEffect(() => {
+    if (shouldClose && popupRef.current && !popupRef.current.closed) {
+      popupRef.current.close();
+      popupRef.current = null;
+      setPopupAlive(false);
+    }
+  }, [shouldClose]);
 
   // Poll popup status
   useEffect(() => {
