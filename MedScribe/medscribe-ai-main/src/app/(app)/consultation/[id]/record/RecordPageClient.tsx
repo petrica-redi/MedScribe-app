@@ -152,9 +152,11 @@ export default function ConsultationRecordPage() {
     }
   }, [remoteVideoStream]);
 
+  // Auto-scroll only the transcript container, not the whole page
   useEffect(() => {
-    if (transcriptEndRef.current) {
-      transcriptEndRef.current.scrollIntoView({ behavior: "smooth" });
+    const el = transcriptEndRef.current;
+    if (el?.parentElement) {
+      el.parentElement.scrollTop = el.parentElement.scrollHeight;
     }
   }, [transcript]);
 

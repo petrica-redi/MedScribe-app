@@ -201,8 +201,8 @@ export function useAudioRecorder({
     reconnectTimeoutRef.current = setTimeout(() => {
       if (intentionalCloseRef.current) return;
 
-      const wsUrl = `wss://api.deepgram.com/v1/listen?${wsParamsRef.current}`;
-      const ws = new WebSocket(wsUrl, ["token", dgKeyRef.current as string]);
+      const wsUrl = `wss://api.deepgram.com/v1/listen?${wsParamsRef.current}&token=${encodeURIComponent(dgKeyRef.current as string)}`;
+      const ws = new WebSocket(wsUrl);
       ws.binaryType = "arraybuffer";
 
       const useMultichannel = isMultichannelRef.current;
@@ -609,11 +609,12 @@ export function useAudioRecorder({
         });
 
         wsParamsRef.current = wsParams.toString();
-        const wsUrl = `wss://api.deepgram.com/v1/listen?${wsParams}`;
+        // Use token query param for auth (more compatible than subprotocol)
+        const wsUrl = `wss://api.deepgram.com/v1/listen?${wsParams}&token=${encodeURIComponent(dgKey)}`;
 
         try {
           wsConnected = await new Promise<boolean>((resolve) => {
-            const ws = new WebSocket(wsUrl, ["token", dgKey]);
+            const ws = new WebSocket(wsUrl);
             ws.binaryType = "arraybuffer";
 
             const timeout = setTimeout(() => {
