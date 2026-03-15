@@ -201,8 +201,8 @@ export function useAudioRecorder({
     reconnectTimeoutRef.current = setTimeout(() => {
       if (intentionalCloseRef.current) return;
 
-      const wsUrl = `wss://api.deepgram.com/v1/listen?${wsParamsRef.current}`;
-      const ws = new WebSocket(wsUrl, ["token", dgKeyRef.current as string]);
+      const wsUrl = `wss://api.deepgram.com/v1/listen?${wsParamsRef.current}&token=${encodeURIComponent(dgKeyRef.current as string)}`;
+      const ws = new WebSocket(wsUrl);
       ws.binaryType = "arraybuffer";
 
       const useMultichannel = isMultichannelRef.current;
@@ -580,7 +580,7 @@ export function useAudioRecorder({
         const useMultichannel = isMultichannelRef.current;
         const sampleRate = audioContextRef.current?.sampleRate || 48000;
         const wsParams = new URLSearchParams({
-          model: language === "en" ? "nova-2-medical" : "nova-3",
+          model: "nova-2",
           language,
           smart_format: "true",
           punctuate: "true",
@@ -598,11 +598,11 @@ export function useAudioRecorder({
         });
 
         wsParamsRef.current = wsParams.toString();
-        const wsUrl = `wss://api.deepgram.com/v1/listen?${wsParams}`;
+        const wsUrl = `wss://api.deepgram.com/v1/listen?${wsParams}&token=${encodeURIComponent(dgKey)}`;
 
         try {
           wsConnected = await new Promise<boolean>((resolve) => {
-            const ws = new WebSocket(wsUrl, ["token", dgKey as string]);
+            const ws = new WebSocket(wsUrl);
             ws.binaryType = "arraybuffer";
 
             const timeout = setTimeout(() => {
