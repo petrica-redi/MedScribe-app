@@ -2,13 +2,7 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
-import { useSessionTimeout } from "@/hooks/useSessionTimeout";
 import { I18nProvider } from "@/lib/i18n/context";
-
-function SessionTimeoutWrapper({ children }: { children: ReactNode }) {
-  useSessionTimeout();
-  return <>{children}</>;
-}
 
 export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(
@@ -26,7 +20,7 @@ export function Providers({ children }: { children: ReactNode }) {
   return (
     <I18nProvider>
       <QueryClientProvider client={queryClient}>
-        <SessionTimeoutWrapper>{children}</SessionTimeoutWrapper>
+        {children}
       </QueryClientProvider>
     </I18nProvider>
   );

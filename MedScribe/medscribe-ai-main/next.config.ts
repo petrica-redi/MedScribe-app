@@ -1,9 +1,6 @@
-import path from "node:path";
 import type { NextConfig } from "next";
 
 const isDev = process.env.NODE_ENV !== "production";
-
-const scriptSrc = "script-src 'self' 'unsafe-inline' https://accounts.google.com";
 
 const nextConfig: NextConfig = {
   eslint: {
@@ -14,14 +11,8 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "2mb",
     },
   },
-  // Unique per-build ID lets Next.js detect stale client bundles and trigger a
-  // full page reload instead of rendering mismatched chunks.
-  deploymentId: process.env.VERCEL_DEPLOYMENT_ID || `local-${Date.now()}`,
-  outputFileTracingRoot: path.resolve(__dirname),
+  poweredByHeader: false,
   redirects: async () => [
-    // Browsers still request /favicon.ico as a fallback regardless of HTML <link>.
-    // Next.js App Router serves /icon.png from src/app/icon.tsx; redirect the .ico
-    // request there so there are no 404s.
     {
       source: "/favicon.ico",
       destination: "/icon.png",
@@ -29,18 +20,6 @@ const nextConfig: NextConfig = {
     },
   ],
   headers: async () => [
-    // Prevent HTML pages from being served stale — ensures clients always
-    // fetch the latest deployment's page shell (which references current chunk hashes).
-    {
-      source: "/:path*",
-      has: [{ type: "header", key: "Accept", value: ".*text/html.*" }],
-      headers: [
-        {
-          key: "Cache-Control",
-          value: "no-cache, no-store, must-revalidate",
-        },
-      ],
-    },
     {
       source: "/(.*)",
       headers: [
@@ -56,11 +35,13 @@ const nextConfig: NextConfig = {
           key: "Content-Security-Policy",
           value: [
             "default-src 'self'",
-            scriptSrc,
+            isDev
+              ? "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://accounts.google.com"
+              : "script-src 'self' 'unsafe-inline' https://accounts.google.com",
             "style-src 'self' 'unsafe-inline'",
             "img-src 'self' data: blob: https://*.googleusercontent.com https://lh3.googleusercontent.com",
             "font-src 'self' https://fonts.gstatic.com",
-            `connect-src 'self' wss://*.supabase.co https://*.supabase.co wss://api.deepgram.com https://api.deepgram.com https://api.anthropic.com https://accounts.google.com https://oauth2.googleapis.com https://openidconnect.googleapis.com${isDev ? " wss://localhost:* http://localhost:* ws://10.211.55.3:* wss://10.211.55.3:* http://10.211.55.3:* https://10.211.55.3:*" : ""}`,
+            `connect-src 'self' wss://*.supabase.co https://*.supabase.co wss://api.deepgram.com https://api.deepgram.com https://api.anthropic.com https://accounts.google.com https://oauth2.googleapis.com https://openidconnect.googleapis.com${isDev ? " wss://localhost:* http://localhost:*" : ""}`,
             "frame-src https://accounts.google.com",
             "media-src 'self' blob:",
           ].join("; "),
