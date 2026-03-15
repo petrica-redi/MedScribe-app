@@ -296,11 +296,15 @@ export async function POST(request: NextRequest) {
         `[Deepgram] Transcribing: ${(audioBlob.size / 1024).toFixed(1)}KB, mode: ${isMultichannel ? "multichannel" : "diarize"}, model: ${primaryModel}, language: ${language}`
       );
 
+      // When multi-language: use detect_language=true WITHOUT setting language
+      // param — this lets Deepgram auto-detect per utterance instead of defaulting
+      // to English.
       const params = new URLSearchParams({
         model: primaryModel,
-        language: isMultiLang ? "multi" : language,
         smart_format: "true",
-        detect_language: isMultiLang ? "true" : "false",
+        ...(isMultiLang
+          ? { detect_language: "true" }
+          : { language, detect_language: "false" }),
       });
 
       if (isMultichannel) {
@@ -340,8 +344,10 @@ export async function POST(request: NextRequest) {
         console.log(`[Deepgram] Retrying with nova-2 model (language: ${language})...`);
         const fallbackParams = new URLSearchParams({
           model: "nova-2",
-          language,
           smart_format: "true",
+          ...(isMultiLang
+            ? { detect_language: "true" }
+            : { language }),
         });
 
         if (isMultichannel) {

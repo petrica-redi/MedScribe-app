@@ -32,7 +32,6 @@ const TEMPLATES = [
 ];
 
 const LANGUAGES = [
-  { value: "multi", label: "Auto-detect (multilingual)" },
   { value: "en", label: "English" },
   { value: "ro", label: "Romanian" },
   { value: "de", label: "German" },
@@ -50,6 +49,12 @@ const LANGUAGES = [
   { value: "hi", label: "Hindi" },
   { value: "ja", label: "Japanese" },
   { value: "ko", label: "Korean" },
+  { value: "ar", label: "Arabic" },
+  { value: "zh", label: "Chinese" },
+  { value: "uk", label: "Ukrainian" },
+  { value: "el", label: "Greek" },
+  { value: "sv", label: "Swedish" },
+  { value: "hr", label: "Croatian" },
 ];
 
 const LANG_LABELS: Record<string, string> = Object.fromEntries(
@@ -70,9 +75,9 @@ export default function ConsultationRecordPage() {
   const [consultationData, setConsultationData] = useState<ConsultationWithRelations | null>(null);
   const [error, setError] = useState("");
   const [consultationMode, setConsultationMode] = useState<ConsultationMode>("in-person");
-  const [selectedLanguage, setSelectedLanguage] = useState("multi");
-  const [detectedPatientLang, setDetectedPatientLang] = useState<string | null>(null);
-  const [detectedDoctorLang, setDetectedDoctorLang] = useState<string | null>(null);
+  const [doctorLang, setDoctorLang] = useState("en");
+  const [patientLang, setPatientLang] = useState("en");
+  const isMultilingual = doctorLang !== patientLang;
   const [selectedTemplate, setSelectedTemplate] = useState(TEMPLATES[0].value);
   const [isGeneratingNote, setIsGeneratingNote] = useState(false);
   const [sessionNotes, setSessionNotes] = useState("");
@@ -105,7 +110,7 @@ export default function ConsultationRecordPage() {
     error: recordingError,
   } = useAudioRecorder({
     mode: consultationMode,
-    language: selectedLanguage,
+    language: isMultilingual ? "multi" : doctorLang,
     streaming: true,
     consultationId: consultationId ?? undefined,
     onError: (err) => setError(err),
@@ -246,20 +251,23 @@ export default function ConsultationRecordPage() {
     setTrackedProblems(problems);
   }, []);
 
-  // Persist language selection across sessions.
-  // langLoadedRef prevents the write effect from firing on the very first render
-  // (with the default "en" value) before the read effect has had a chance to
-  // restore the saved value.
+  // Persist language selections across sessions
   const langLoadedRef = useRef(false);
   useEffect(() => {
-    const saved = localStorage.getItem("scriva-last-language");
-    if (saved && LANGUAGES.some((l) => l.value === saved)) setSelectedLanguage(saved);
+    try {
+      const saved = localStorage.getItem("scriva-langs");
+      if (saved) {
+        const { doctor, patient } = JSON.parse(saved) as { doctor?: string; patient?: string };
+        if (doctor && LANGUAGES.some((l) => l.value === doctor)) setDoctorLang(doctor);
+        if (patient && LANGUAGES.some((l) => l.value === patient)) setPatientLang(patient);
+      }
+    } catch { /* ignore corrupt storage */ }
     langLoadedRef.current = true;
   }, []);
   useEffect(() => {
     if (!langLoadedRef.current) return;
-    localStorage.setItem("scriva-last-language", selectedLanguage);
-  }, [selectedLanguage]);
+    localStorage.setItem("scriva-langs", JSON.stringify({ doctor: doctorLang, patient: patientLang }));
+  }, [doctorLang, patientLang]);
 
   // Keyboard shortcuts during recording (Space = pause/resume)
   useEffect(() => {
@@ -281,7 +289,7 @@ export default function ConsultationRecordPage() {
     return () => window.removeEventListener("keydown", handler);
   }, [isRecording, isPaused, pauseRecording, resumeRecording]);
 
-  // ── Auto-translation for multilingual conversations ─────────────────
+  // ── Live translation for multilingual conversations ─────────────────
   const translatingRef = useRef<Set<string>>(new Set());
   const [translations, setTranslations] = useState<Record<string, string>>({});
 
@@ -292,55 +300,70 @@ export default function ConsultationRecordPage() {
   );
 
   useEffect(() => {
-    if (!isRecording || !streamingActive) return;
+    if (!isRecording || !isMultilingual) return;
 
-    const isMultiLang = selectedLanguage === "multi";
-    // In multi mode, the "doctor language" is auto-detected from speaker 0 segments.
-    // In single-language mode, it's whatever the user selected.
-    const doctorLang = isMultiLang ? detectedDoctorLang : selectedLanguage;
+    // Collect untranslated final segments, grouped by direction
+    const doctorToPatient: Array<{ key: string; text: string }> = [];
+    const patientToDoctor: Array<{ key: string; text: string }> = [];
 
-    const finalItems = transcript.filter(
-      (t) => t.isFinal && t.detectedLanguage
-    );
-
-    for (const item of finalItems) {
-      const lang = item.detectedLanguage!;
+    for (const item of transcript) {
+      if (!item.isFinal || !item.text.trim()) continue;
       const key = makeTranslationKey(item);
       if (translatingRef.current.has(key) || translations[key]) continue;
 
-      // Track detected languages per speaker
-      if (item.speaker === 0 && isMultiLang && !detectedDoctorLang) {
-        setDetectedDoctorLang(lang);
+      if (item.speaker === 0) {
+        doctorToPatient.push({ key, text: item.text });
+      } else {
+        patientToDoctor.push({ key, text: item.text });
       }
-      if (item.speaker !== 0 && lang !== doctorLang) {
-        setDetectedPatientLang(lang);
-      }
-
-      // Translate when doctor and patient speak different languages
-      const needsTranslation = doctorLang && detectedPatientLang &&
-        doctorLang !== detectedPatientLang &&
-        ((item.speaker === 0 && lang !== detectedPatientLang) ||
-         (item.speaker !== 0 && lang !== doctorLang));
-
-      if (!needsTranslation) continue;
-
-      const toLang = item.speaker === 0 ? detectedPatientLang! : doctorLang!;
-
-      translatingRef.current.add(key);
-      fetch("/api/translate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: item.text, fromLang: lang, toLang }),
-      })
-        .then((r) => (r.ok ? r.json() : null))
-        .then((data: { translatedText?: string } | null) => {
-          if (!data?.translatedText) return;
-          setTranslations((prev) => ({ ...prev, [key]: data.translatedText! }));
-        })
-        .catch(() => {})
-        .finally(() => translatingRef.current.delete(key));
     }
-  }, [transcript, isRecording, streamingActive, selectedLanguage, detectedDoctorLang, detectedPatientLang, translations, makeTranslationKey]);
+
+    const sendBatch = (
+      segments: Array<{ key: string; text: string }>,
+      fromLang: string,
+      toLang: string
+    ) => {
+      if (segments.length === 0) return;
+
+      for (const s of segments) translatingRef.current.add(s.key);
+
+      if (segments.length === 1) {
+        // Single segment — use simple endpoint
+        const { key, text } = segments[0];
+        fetch("/api/translate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text, fromLang, toLang }),
+        })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((data: { translatedText?: string } | null) => {
+            if (!data?.translatedText) return;
+            setTranslations((prev) => ({ ...prev, [key]: data.translatedText! }));
+          })
+          .catch(() => {})
+          .finally(() => translatingRef.current.delete(key));
+      } else {
+        // Multiple segments — use batch endpoint
+        fetch("/api/translate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ segments, fromLang, toLang }),
+        })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((data: { translations?: Record<string, string> } | null) => {
+            if (!data?.translations) return;
+            setTranslations((prev) => ({ ...prev, ...data.translations }));
+          })
+          .catch(() => {})
+          .finally(() => {
+            for (const s of segments) translatingRef.current.delete(s.key);
+          });
+      }
+    };
+
+    sendBatch(doctorToPatient, doctorLang, patientLang);
+    sendBatch(patientToDoctor, patientLang, doctorLang);
+  }, [transcript, isRecording, isMultilingual, doctorLang, patientLang, translations, makeTranslationKey]);
 
   const handleMicTest = useCallback(async () => {
     if (micTestState !== "idle") return;
@@ -441,7 +464,7 @@ export default function ConsultationRecordPage() {
           consultation_id: consultationId,
           segments: segments,
           full_text: fullText,
-          language: selectedLanguage,
+          language: doctorLang,
           provider: "deepgram",
           updated_at: new Date().toISOString(),
         }, { onConflict: "consultation_id" });
@@ -505,7 +528,7 @@ export default function ConsultationRecordPage() {
           consultation_id: consultationId,
           template: selectedTemplate,
           transcript: transcriptText,
-          language: selectedLanguage,
+          language: doctorLang,
           metadata: { visit_type: consultationData?.visit_type, patient_name: patientName },
         }),
       });
@@ -575,29 +598,30 @@ export default function ConsultationRecordPage() {
             const isInterim = !item.isFinal;
             const tKey = makeTranslationKey(item);
             const translatedText = item.translatedText || translations[tKey];
-            const langCode = item.detectedLanguage;
-            const langLabel = langCode
-              ? LANG_LABELS[langCode] ?? langCode.toUpperCase()
-              : null;
+            const originalLang = isDoctor ? doctorLang : patientLang;
+            const targetLang = isDoctor ? patientLang : doctorLang;
+            const showTranslation = isMultilingual && translatedText;
             return (
               <div
                 key={`${item.timestamp}-${item.speaker}-${idx}`}
                 className={`flex ${isDoctor ? "justify-start" : "justify-end"} animate-in fade-in slide-in-from-bottom-2 duration-300`}
               >
                 <div
-                  className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm shadow-sm ${
+                  className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm shadow-sm ${
                     isDoctor
-                      ? "bg-blue-100 text-blue-900 rounded-bl-md"
-                      : "bg-green-100 text-green-900 rounded-br-md"
+                      ? "bg-blue-50 text-blue-900 rounded-bl-md border border-blue-100"
+                      : "bg-green-50 text-green-900 rounded-br-md border border-green-100"
                   } ${isInterim ? "italic opacity-70" : ""}`}
                 >
                   <div className="flex items-center gap-2 mb-1">
                     <span className={`text-[10px] font-bold uppercase tracking-wider ${isDoctor ? "text-blue-600" : "text-green-600"}`}>
                       {isDoctor ? t("record.doctor") : t("record.patientSpeaker")}
                     </span>
-                    {langLabel && (
-                      <span className="rounded-full bg-gray-200/70 px-1.5 py-px text-[9px] font-semibold uppercase text-gray-500">
-                        {langCode}
+                    {isMultilingual && (
+                      <span className={`rounded-full px-1.5 py-px text-[9px] font-semibold uppercase ${
+                        isDoctor ? "bg-blue-100 text-blue-500" : "bg-green-100 text-green-500"
+                      }`}>
+                        {originalLang.toUpperCase()}
                       </span>
                     )}
                     {item.timestamp > 0 && (
@@ -608,11 +632,25 @@ export default function ConsultationRecordPage() {
                     )}
                   </div>
                   <p className="leading-relaxed">{item.text}</p>
-                  {translatedText && (
-                    <div className="mt-1.5 border-t border-current/10 pt-1.5">
-                      <p className="text-[13px] italic leading-relaxed opacity-80">
-                        {translatedText}
-                      </p>
+                  {showTranslation && (
+                    <div className={`mt-2 rounded-lg px-3 py-2 ${
+                      isDoctor ? "bg-blue-100/60" : "bg-green-100/60"
+                    }`}>
+                      <div className="mb-0.5 flex items-center gap-1.5">
+                        <svg className="h-3 w-3 opacity-50" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="m10.5 21 5.25-11.25L21 21m-9-3h7.5M3 5.621a48.474 48.474 0 0 1 6-.371m0 0c1.12 0 2.233.038 3.334.114M9 5.25V3m3.334 2.364C11.176 10.658 7.69 15.08 3 17.502m9.334-12.138c.896.061 1.785.147 2.666.257m-4.589 8.495a18.023 18.023 0 0 1-3.827-5.802" />
+                        </svg>
+                        <span className="text-[9px] font-semibold uppercase tracking-wider opacity-50">
+                          {LANG_LABELS[targetLang] ?? targetLang.toUpperCase()}
+                        </span>
+                      </div>
+                      <p className="text-[13px] leading-relaxed">{translatedText}</p>
+                    </div>
+                  )}
+                  {isMultilingual && item.isFinal && !translatedText && !isInterim && translatingRef.current.has(tKey) && (
+                    <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-gray-400">
+                      <div className="h-3 w-3 animate-spin rounded-full border-2 border-gray-300 border-t-transparent" />
+                      Translating…
                     </div>
                   )}
                 </div>
@@ -818,35 +856,69 @@ export default function ConsultationRecordPage() {
             </div>
           )}
 
-            {/* Doctor language + mic test row */}
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              <div className="flex-1">
-                <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-medical-muted">
-                  Transcription language
-                </label>
-                <select
-                  value={selectedLanguage}
-                  onChange={(e) => setSelectedLanguage(e.target.value)}
-                  className="w-full rounded-lg border border-medical-border px-3 py-2 text-sm text-medical-text focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
-                >
-                  {LANGUAGES.map((lang) => (
-                    <option key={lang.value} value={lang.value}>{lang.label}</option>
-                  ))}
-                </select>
-                <p className="mt-1 text-[11px] text-medical-muted">
-                  {selectedLanguage === "multi"
-                    ? "Automatically detects any language — doctor and patient can speak different languages"
-                    : "Patient language is detected automatically — live translation appears when languages differ"}
-                </p>
+            {/* Language selection + mic test */}
+            <div className="w-full max-w-lg space-y-3">
+              {/* Dual language dropdowns */}
+              <div className="rounded-xl border border-medical-border bg-white p-4 shadow-sm">
+                <div className="mb-3 flex items-center gap-2">
+                  <svg className="h-4 w-4 text-brand-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m10.5 21 5.25-11.25L21 21m-9-3h7.5M3 5.621a48.474 48.474 0 0 1 6-.371m0 0c1.12 0 2.233.038 3.334.114M9 5.25V3m3.334 2.364C11.176 10.658 7.69 15.08 3 17.502m9.334-12.138c.896.061 1.785.147 2.666.257m-4.589 8.495a18.023 18.023 0 0 1-3.827-5.802" />
+                  </svg>
+                  <span className="text-sm font-semibold text-medical-text">Consultation Languages</span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="mb-1 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-blue-600">
+                      <span className="h-2 w-2 rounded-full bg-blue-500" />
+                      Doctor speaks
+                    </label>
+                    <select
+                      value={doctorLang}
+                      onChange={(e) => setDoctorLang(e.target.value)}
+                      className="w-full rounded-lg border border-blue-200 bg-blue-50/30 px-3 py-2 text-sm text-medical-text focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/20"
+                    >
+                      {LANGUAGES.map((lang) => (
+                        <option key={lang.value} value={lang.value}>{lang.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-1 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-green-600">
+                      <span className="h-2 w-2 rounded-full bg-green-500" />
+                      Patient speaks
+                    </label>
+                    <select
+                      value={patientLang}
+                      onChange={(e) => setPatientLang(e.target.value)}
+                      className="w-full rounded-lg border border-green-200 bg-green-50/30 px-3 py-2 text-sm text-medical-text focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-400/20"
+                    >
+                      {LANGUAGES.map((lang) => (
+                        <option key={lang.value} value={lang.value}>{lang.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {isMultilingual && (
+                  <div className="mt-3 flex items-start gap-2 rounded-lg bg-brand-50 px-3 py-2">
+                    <svg className="mt-0.5 h-4 w-4 flex-shrink-0 text-brand-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m10.5 21 5.25-11.25L21 21m-9-3h7.5M3 5.621a48.474 48.474 0 0 1 6-.371m0 0c1.12 0 2.233.038 3.334.114M9 5.25V3m3.334 2.364C11.176 10.658 7.69 15.08 3 17.502m9.334-12.138c.896.061 1.785.147 2.666.257m-4.589 8.495a18.023 18.023 0 0 1-3.827-5.802" />
+                    </svg>
+                    <p className="text-xs text-brand-800">
+                      <strong>Live translation active.</strong> Each message will be shown in both languages so doctor and patient can read the conversation in their own language.
+                    </p>
+                  </div>
+                )}
               </div>
 
-              {/* Microphone test button */}
+              {/* Mic test button */}
               <button
                 type="button"
                 onClick={() => void handleMicTest()}
                 disabled={micTestState === "recording"}
                 title="Test microphone (records 3 s and plays back)"
-                className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+                className={`flex w-full items-center justify-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors ${
                   micTestState === "recording"
                     ? "border-red-300 bg-red-50 text-red-700 animate-pulse"
                     : micTestState === "playing"
@@ -857,21 +929,21 @@ export default function ConsultationRecordPage() {
                 {micTestState === "recording" ? (
                   <>
                     <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
-                    3 s…
+                    Recording 3 seconds…
                   </>
                 ) : micTestState === "playing" ? (
                   <>
                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 0 1 0 12.728M16.463 8.288a5.25 5.25 0 0 1 0 7.424M6.75 8.25l4.72-4.72a.75.75 0 0 1 1.28.53v15.88a.75.75 0 0 1-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.009 9.009 0 0 1 2.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75Z" />
                     </svg>
-                    Playing…
+                    Playing back…
                   </>
                 ) : (
                   <>
                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z" />
                     </svg>
-                    Test mic
+                    Test microphone
                   </>
                 )}
               </button>
@@ -1081,25 +1153,23 @@ export default function ConsultationRecordPage() {
                           Live
                         </span>
                       )}
-                      {detectedPatientLang && (selectedLanguage === "multi" ? detectedDoctorLang && detectedPatientLang !== detectedDoctorLang : detectedPatientLang !== selectedLanguage) && (
-                        <span className="flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700">
+                      {isMultilingual && (
+                        <span className="flex items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-medium text-brand-700">
                           <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" d="m10.5 21 5.25-11.25L21 21m-9-3h7.5M3 5.621a48.474 48.474 0 0 1 6-.371m0 0c1.12 0 2.233.038 3.334.114M9 5.25V3m3.334 2.364C11.176 10.658 7.69 15.08 3 17.502m9.334-12.138c.896.061 1.785.147 2.666.257m-4.589 8.495a18.023 18.023 0 0 1-3.827-5.802" />
                           </svg>
-                          Translating: {LANG_LABELS[detectedPatientLang] ?? detectedPatientLang.toUpperCase()}
+                          Live Translation
                         </span>
                       )}
                     </div>
                     <div className="flex flex-wrap items-center gap-1.5">
                       <span className="flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-600">
                         <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
-                        {t("record.doctor")}{selectedLanguage === "multi"
-                          ? (detectedDoctorLang ? ` (${LANG_LABELS[detectedDoctorLang] ?? detectedDoctorLang.toUpperCase()})` : "")
-                          : ` (${LANG_LABELS[selectedLanguage] ?? selectedLanguage.toUpperCase()})`}
+                        {t("record.doctor")} ({LANG_LABELS[doctorLang] ?? doctorLang.toUpperCase()})
                       </span>
                       <span className="flex items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-medium text-green-600">
                         <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
-                        {t("record.patientSpeaker")}{detectedPatientLang ? ` (${LANG_LABELS[detectedPatientLang] ?? detectedPatientLang.toUpperCase()})` : ""}
+                        {t("record.patientSpeaker")} ({LANG_LABELS[patientLang] ?? patientLang.toUpperCase()})
                       </span>
                     </div>
                   </div>

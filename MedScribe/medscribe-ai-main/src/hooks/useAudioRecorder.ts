@@ -591,15 +591,20 @@ export function useAudioRecorder({
         const isEnglishOnly = !isMultiLang && (language === "en" || language.startsWith("en-"));
         const wsModel = isEnglishOnly ? "nova-3-medical" : "nova-3";
 
+        // When multi-language is selected, use detect_language=true WITHOUT
+        // setting a language param — this tells Deepgram nova-3 to auto-detect
+        // per utterance. Setting language="multi" alongside detect_language can
+        // cause it to default to English.
         const wsParams = new URLSearchParams({
           model: wsModel,
-          language: isMultiLang ? "multi" : language,
           smart_format: "true",
           punctuate: "true",
           interim_results: "true",
           endpointing: "300",
           utterance_end_ms: "1000",
-          ...(isMultiLang ? { detect_language: "true" } : {}),
+          ...(isMultiLang
+            ? { detect_language: "true" }
+            : { language }),
           ...(useMultichannel
             ? {
                 multichannel: "true",
