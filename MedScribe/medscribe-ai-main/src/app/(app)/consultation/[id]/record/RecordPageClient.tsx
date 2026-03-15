@@ -123,6 +123,16 @@ export default function ConsultationRecordPage() {
   const [micTestUrl, setMicTestUrl] = useState<string | null>(null);
   const micTestAudioRef = useRef<HTMLAudioElement | null>(null);
   const pipVideoRef = useRef<HTMLVideoElement | null>(null);
+  // Callback ref: attach stream immediately when video element mounts/updates
+  const pipVideoCallbackRef = useCallback((el: HTMLVideoElement | null) => {
+    pipVideoRef.current = el;
+    if (el && remoteVideoStream && remoteVideoStream.getVideoTracks().length > 0) {
+      el.srcObject = remoteVideoStream;
+      el.play().catch(() => {});
+    } else if (el) {
+      el.srcObject = null;
+    }
+  }, [remoteVideoStream]);
 
   useEffect(() => {
     if (transcriptEndRef.current) {
@@ -130,17 +140,6 @@ export default function ConsultationRecordPage() {
     }
   }, [transcript]);
 
-  // Attach remote stream to fixed PiP video when in remote mode
-  useEffect(() => {
-    const el = pipVideoRef.current;
-    if (consultationMode === "remote" && el && remoteVideoStream && remoteVideoStream.getVideoTracks().length > 0) {
-      el.srcObject = remoteVideoStream;
-      el.play().catch(() => {});
-    }
-    return () => {
-      if (el) el.srcObject = null;
-    };
-  }, [consultationMode, remoteVideoStream]);
 
   useEffect(() => {
     const loadConsultationAndAuth = async () => {
@@ -960,7 +959,7 @@ export default function ConsultationRecordPage() {
                   </div>
                   {remoteVideoStream && remoteVideoStream.getVideoTracks().length > 0 ? (
                     <video
-                      ref={pipVideoRef}
+                      ref={pipVideoCallbackRef}
                       autoPlay
                       playsInline
                       muted

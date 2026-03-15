@@ -115,7 +115,7 @@ export function useAudioRecorder({
    * Send ALL accumulated chunks to the batch transcription API and replace the
    * current transcript with the result.  Sending the full audio each time
    * (rather than a delta) gives the STT model full context and produces better
-   * speaker-diarization results.  The transcript "refreshes" every 30 s, which
+   * speaker-diarization results.  The transcript "refreshes" every 10 s, which
    * is acceptable — the doctor is not supposed to edit mid-recording.
    */
   const doPeriodicFlush = useCallback(async () => {
@@ -176,7 +176,7 @@ export function useAudioRecorder({
       setStreamingActive(false);
       setConnectionStatus("connected"); // mic is still active
       setStreamingStatus(
-        "Deepgram unavailable — recording locally, transcript updates every 30 s"
+        "Deepgram unavailable — recording locally, transcript updates every 10 s"
       );
       mimeTypeRef.current = mediaRecorderRef.current?.mimeType ?? "audio/webm";
       periodicFlushActiveRef.current = true;
@@ -188,7 +188,7 @@ export function useAudioRecorder({
         }, 5_000);
         periodicFlushIntervalRef.current = setInterval(
           () => void doPeriodicFlush(),
-          30_000
+          10_000
         );
       }
       return;
@@ -580,7 +580,7 @@ export function useAudioRecorder({
         const useMultichannel = isMultichannelRef.current;
         const sampleRate = audioContextRef.current?.sampleRate || 48000;
         const wsParams = new URLSearchParams({
-          model: language === "en" ? "nova-3-medical" : "nova-3",
+          model: language === "en" ? "nova-2-medical" : "nova-3",
           language,
           smart_format: "true",
           punctuate: "true",
