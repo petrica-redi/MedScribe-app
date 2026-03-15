@@ -5,13 +5,17 @@ const isDev = process.env.NODE_ENV !== "production";
 
 // ─── Fix React Error #310 ──────────────────────────────────────────────
 // Next.js 15.5 bundles its own React (19.2.0-canary) at
-// next/dist/compiled/react, while node_modules has React 19.2.4 (stable).
-// When client components hydrate, webpack may resolve some imports to the
-// canary build and others to stable — two different React instances = #310.
+// next/dist/compiled/react. The client-side Next.js runtime (routing,
+// hydration, Fiber tree) uses that compiled copy to set up hook dispatchers.
 //
-// Force ALL client-side React imports to the single node_modules copy.
-const reactDir = path.dirname(require.resolve("react/package.json"));
-const reactDomDir = path.dirname(require.resolve("react-dom/package.json"));
+// If application code imports a DIFFERENT React from node_modules (19.2.4),
+// its hooks read from a different ReactSharedInternals → dispatcher is null
+// → Error #310.
+//
+// Fix: alias ALL client-side React imports to the SAME copy Next.js uses.
+const nextDir = path.dirname(require.resolve("next/package.json"));
+const nextCompiledReact = path.join(nextDir, "dist/compiled/react");
+const nextCompiledReactDom = path.join(nextDir, "dist/compiled/react-dom");
 
 const nextConfig: NextConfig = {
   eslint: {
@@ -34,8 +38,8 @@ const nextConfig: NextConfig = {
     if (!isServer) {
       config.resolve.alias = {
         ...config.resolve.alias,
-        react: reactDir,
-        "react-dom": reactDomDir,
+        react: nextCompiledReact,
+        "react-dom": nextCompiledReactDom,
       };
     }
     return config;
