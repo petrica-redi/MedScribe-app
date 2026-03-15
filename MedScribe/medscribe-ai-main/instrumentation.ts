@@ -1,13 +1,5 @@
-import * as Sentry from "@sentry/nextjs";
-
+// Sentry removed — this file is intentionally empty.
+// It can be safely deleted from the repo.
 export async function register() {
-  if (process.env.NEXT_RUNTIME === "nodejs") {
-    await import("./sentry.server.config");
-  }
-
-  if (process.env.NEXT_RUNTIME === "edge") {
-    await import("./sentry.edge.config");
-  }
+  // no-op
 }
-
-export const onRequestError = Sentry.captureRequestError;

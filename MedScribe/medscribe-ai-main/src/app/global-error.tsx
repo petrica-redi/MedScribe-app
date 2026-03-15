@@ -1,6 +1,5 @@
 "use client";
 
-import * as Sentry from "@sentry/nextjs";
 import NextError from "next/error";
 import { useEffect } from "react";
 
@@ -42,7 +41,9 @@ export default function GlobalError({
 }) {
   useEffect(() => {
     if (tryAutoRecover(error)) return; // Will reload — no need to show error
-    Sentry.captureException(error);
+    if (process.env.NODE_ENV === "development") {
+      console.error("[GlobalError]", error);
+    }
   }, [error]);
 
   return (

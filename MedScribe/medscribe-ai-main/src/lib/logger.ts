@@ -1,6 +1,6 @@
 /**
  * Scriva Logger — suppresses console output in production.
- * Errors are sent to Sentry (configured separately); only dev output goes to console.
+ * Only dev output goes to console; production stays silent.
  */
 
 const isDev = process.env.NODE_ENV !== "production";

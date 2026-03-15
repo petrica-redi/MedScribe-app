@@ -58,14 +58,9 @@ export class ErrorBoundary extends Component<Props, State> {
       return; // page is reloading with cache-busting param
     }
 
-    if (typeof window !== "undefined") {
-      import("@sentry/nextjs")
-        .then((Sentry) => {
-          Sentry.captureException(error, {
-            extra: { componentStack: errorInfo.componentStack },
-          });
-        })
-        .catch(() => {});
+    // Log error details in development for debugging
+    if (process.env.NODE_ENV === "development") {
+      console.error("[ErrorBoundary]", error, errorInfo.componentStack);
     }
   }
 
