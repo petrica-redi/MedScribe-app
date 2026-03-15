@@ -108,9 +108,15 @@ export default function ConsultationRecordPage() {
     pauseRecording,
     resumeRecording,
     error: recordingError,
+  // Language strategy for Deepgram:
+  // - Same language: pass that language directly (best accuracy)
+  // - Different languages: pass the patient's language (the speech that needs
+  //   most accuracy). Deepgram handles code-switching for the doctor's language
+  //   (typically English/French) within a single-language model better than
+  //   "multi" mode handles low-resource languages like Romanian or Arabic.
   } = useAudioRecorder({
     mode: consultationMode,
-    language: isMultilingual ? "multi" : doctorLang,
+    language: isMultilingual ? patientLang : doctorLang,
     streaming: true,
     consultationId: consultationId ?? undefined,
     onError: (err) => setError(err),

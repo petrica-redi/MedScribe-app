@@ -276,31 +276,25 @@ export async function POST(request: NextRequest) {
     // Determine audio mode and language from headers
     const audioMode = request.headers.get("X-Audio-Mode");
     const isMultichannel = audioMode === "multichannel";
-    const language = request.headers.get("X-Audio-Language") || "multi";
+    const language = request.headers.get("X-Audio-Language") || "en";
 
-    // "multi" = auto-detect any language; otherwise use language-specific model
-    const isMultiLang = language === "multi";
-    const isEnglish = !isMultiLang && (language === "en" || language.startsWith("en-"));
-    // nova-3-medical only supports English; nova-3 supports all languages + multi
+    // nova-3-medical only supports English; nova-3 supports all languages
+    const isEnglish = language === "en" || language.startsWith("en-");
     const primaryModel = isEnglish ? "nova-3-medical" : "nova-3";
 
     const apiKey = process.env.DEEPGRAM_API_KEY;
 
     // ── Deepgram primary + nova-2 fallback ────────────────────────────────────
-    // Only attempted when DEEPGRAM_API_KEY is configured.  If the key is absent
-    // or all Deepgram attempts fail, execution falls through to the STT fallback
-    // chain below (OpenAI → Google STT).  Previously an early return here
-    // prevented the fallbacks from ever running when the key was missing.
     if (apiKey) {
       console.log(
         `[Deepgram] Transcribing: ${(audioBlob.size / 1024).toFixed(1)}KB, mode: ${isMultichannel ? "multichannel" : "diarize"}, model: ${primaryModel}, language: ${language}`
       );
 
-      // language="multi" tells Deepgram nova-3 to auto-detect per utterance,
-      // supporting mixed-language conversations (e.g. doctor English, patient French).
+      // Pass the specific language code (e.g. "ro", "ar", "fr") for best accuracy.
+      // The caller sets this to the patient's language in multilingual consultations.
       const params = new URLSearchParams({
         model: primaryModel,
-        language: isMultiLang ? "multi" : language,
+        language,
         smart_format: "true",
       });
 
@@ -341,7 +335,7 @@ export async function POST(request: NextRequest) {
         console.log(`[Deepgram] Retrying with nova-2 model (language: ${language})...`);
         const fallbackParams = new URLSearchParams({
           model: "nova-2",
-          language: isMultiLang ? "multi" : language,
+          language,
           smart_format: "true",
         });
 

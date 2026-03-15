@@ -585,18 +585,14 @@ export function useAudioRecorder({
 
         const useMultichannel = isMultichannelRef.current;
         const sampleRate = audioContextRef.current?.sampleRate || 48000;
-        // Use the selected language; "multi" enables auto-detection across all languages.
-        // nova-3-medical only works with English; use nova-3 for everything else.
-        const isMultiLang = language === "multi";
-        const isEnglishOnly = !isMultiLang && (language === "en" || language.startsWith("en-"));
+        // Pass the specific language to Deepgram for best accuracy.
+        // nova-3-medical only supports English; use nova-3 for all others.
+        const isEnglishOnly = language === "en" || language.startsWith("en-");
         const wsModel = isEnglishOnly ? "nova-3-medical" : "nova-3";
 
-        // For WebSocket streaming: language="multi" is the correct param for
-        // auto-detection (detect_language is REST-only and breaks WS connections).
-        // For single language: pass the specific language code.
         const wsParams = new URLSearchParams({
           model: wsModel,
-          language: isMultiLang ? "multi" : language,
+          language,
           smart_format: "true",
           punctuate: "true",
           interim_results: "true",
