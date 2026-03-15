@@ -115,8 +115,6 @@ export default function ConsultationRecordPage() {
   const [retranscribeStatus, setRetranscribeStatus] = useState<Record<string, string>>({});
 
   // ── UX: simplified recording view state ──────────────────────────────────
-  /** Advanced settings drawer (mode selector, remote extras) */
-  const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
   /** AI/clinical sidebar panel during recording */
   const [showSidebar, setShowSidebar] = useState(false);
   const [shouldCloseMeet, setShouldCloseMeet] = useState(false);
@@ -637,6 +635,84 @@ export default function ConsultationRecordPage() {
             )}
           </div>
 
+          {/* ── Consultation Mode Toggle — FIRST DECISION ─────────────────── */}
+          <div className="w-full max-w-xl space-y-4">
+            <div className="text-center">
+              <p className="text-sm font-semibold uppercase tracking-widest text-medical-muted">
+                How is this consultation taking place?
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setConsultationMode("in-person")}
+                className={`flex flex-col items-center gap-3 rounded-2xl border-2 px-6 py-5 text-sm font-semibold transition-all ${
+                  consultationMode === "in-person"
+                    ? "border-brand-600 bg-brand-50 text-brand-800 shadow-md ring-2 ring-brand-200"
+                    : "border-gray-200 bg-white text-medical-muted hover:border-brand-200 hover:bg-brand-50/40 hover:text-brand-700"
+                }`}
+              >
+                <svg className={`h-8 w-8 ${consultationMode === "in-person" ? "text-brand-700" : "text-gray-400"}`} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+                </svg>
+                <span className="text-base">{t("record.inPerson")}</span>
+                <span className={`text-xs font-normal ${consultationMode === "in-person" ? "text-brand-600" : "text-gray-400"}`}>
+                  Patient is in the room
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setConsultationMode("remote")}
+                className={`flex flex-col items-center gap-3 rounded-2xl border-2 px-6 py-5 text-sm font-semibold transition-all ${
+                  consultationMode === "remote"
+                    ? "border-brand-600 bg-brand-50 text-brand-800 shadow-md ring-2 ring-brand-200"
+                    : "border-gray-200 bg-white text-medical-muted hover:border-brand-200 hover:bg-brand-50/40 hover:text-brand-700"
+                }`}
+              >
+                <svg className={`h-8 w-8 ${consultationMode === "remote" ? "text-brand-700" : "text-gray-400"}`} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25h-9A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25Z" />
+                </svg>
+                <span className="text-base">{t("record.remoteCall")}</span>
+                <span className={`text-xs font-normal ${consultationMode === "remote" ? "text-brand-600" : "text-gray-400"}`}>
+                  Via Google Meet / video
+                </span>
+              </button>
+            </div>
+
+            {/* Remote-only: Google Meet setup + identity verification */}
+            {consultationMode === "remote" && consultationId && (
+              <div className="rounded-2xl border-2 border-brand-200 bg-white p-5 shadow-sm space-y-4">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-100">
+                    <svg className="h-4 w-4 text-brand-700" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25h-9A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25Z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-brand-800">Remote Consultation Setup</p>
+                    <p className="text-xs text-brand-600">Connect via Google Meet, then start recording</p>
+                  </div>
+                </div>
+                <GoogleMeetEmbed consultationId={consultationId} />
+                {!identityVerified ? (
+                  <IdentityVerification
+                    patientName={patientName}
+                    patientDOB={consultationData?.patient?.date_of_birth}
+                    consultationId={consultationId}
+                    onVerified={handleIdentityVerified}
+                  />
+                ) : (
+                  <div className="flex items-center gap-2 rounded-xl bg-green-50 border border-green-200 px-4 py-3">
+                    <svg className="h-5 w-5 text-green-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
+                    </svg>
+                    <span className="text-sm text-green-700 font-medium">Identity & tech check verified — ready to record</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* Pre-Visit Intelligence Brief */}
           {consultationData?.patient_id && (
             <div className="w-full max-w-2xl">
@@ -644,9 +720,7 @@ export default function ConsultationRecordPage() {
             </div>
           )}
 
-          {/* ── Settings row ─────────────────────────────────────────────── */}
-          <div className="w-full max-w-md space-y-3">
-            {/* Language + mic test */}
+            {/* Language + mic test row */}
             <div className="flex items-center gap-2">
               <select
                 value={selectedLanguage}
@@ -693,90 +767,7 @@ export default function ConsultationRecordPage() {
                   </>
                 )}
               </button>
-
-              {/* Settings gear — reveals mode selector and remote extras */}
-              <button
-                type="button"
-                onClick={() => setShowAdvancedSettings((v) => !v)}
-                title="Recording settings"
-                className={`rounded-lg border p-2 transition-colors ${
-                  showAdvancedSettings
-                    ? "border-brand-400 bg-brand-50 text-brand-600"
-                    : "border-medical-border bg-white text-medical-muted hover:border-gray-400 hover:text-medical-text"
-                }`}
-              >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-                </svg>
-              </button>
             </div>
-
-            {/* Advanced settings panel */}
-            {showAdvancedSettings && (
-              <div className="rounded-lg border border-medical-border bg-gray-50 p-4 space-y-3">
-                {/* Mode selector */}
-                <div>
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-medical-muted">{t("record.consultationMode")}</p>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setConsultationMode("in-person")}
-                      className={`flex flex-1 items-center justify-center gap-2 rounded-lg border-2 py-2.5 text-sm font-medium transition-colors ${
-                        consultationMode === "in-person"
-                          ? "border-brand-500 bg-brand-50 text-brand-700"
-                          : "border-gray-200 bg-white text-medical-muted hover:border-gray-300"
-                      }`}
-                    >
-                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
-                      </svg>
-                      {t("record.inPerson")}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setConsultationMode("remote")}
-                      className={`flex flex-1 items-center justify-center gap-2 rounded-lg border-2 py-2.5 text-sm font-medium transition-colors ${
-                        consultationMode === "remote"
-                          ? "border-brand-500 bg-brand-50 text-brand-700"
-                          : "border-gray-200 bg-white text-medical-muted hover:border-gray-300"
-                      }`}
-                    >
-                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25h-9A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25Z" />
-                      </svg>
-                      {t("record.remoteCall")}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Remote-only: video embed + identity */}
-                {consultationMode === "remote" && consultationId && (
-                  <div className="space-y-3 pt-1">
-                    <p className="text-xs text-medical-muted">
-                      Join the call below, then start recording.
-                    </p>
-                    <GoogleMeetEmbed consultationId={consultationId} />
-                    {!identityVerified ? (
-                      <IdentityVerification
-                        patientName={patientName}
-                        patientDOB={consultationData?.patient?.date_of_birth}
-                        consultationId={consultationId}
-                        onVerified={handleIdentityVerified}
-                      />
-                    ) : (
-                      <div className="flex items-center gap-2 rounded-lg bg-green-50 border border-green-200 px-3 py-2">
-                        <svg className="h-4 w-4 text-green-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
-                        </svg>
-                        <span className="text-sm text-green-700 font-medium">Identity & tech check verified</span>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
 
           {/* AI transparency notice */}
           <div className="w-full max-w-md rounded-lg border border-indigo-100 bg-indigo-50/40 px-4 py-3">
