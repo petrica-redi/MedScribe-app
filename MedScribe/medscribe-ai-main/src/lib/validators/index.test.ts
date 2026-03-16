@@ -9,7 +9,7 @@ describe("validators", () => {
   it("accepts valid generate-note payload", () => {
     const result = generateNoteSchema.safeParse({
       consultation_id: "550e8400-e29b-41d4-a716-446655440000",
-      template: "soap",
+      template: "SOAP Note",
       transcript: "[Speaker 0]: Hello",
       language: "en",
       metadata: {
